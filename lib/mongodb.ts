@@ -9,7 +9,6 @@ if (!MONGODB_URI) {
 
 const options: MongoClientOptions = {
   tls: true,
-  // Retry on transient network/SSL errors
   retryWrites: true,
   retryReads: true,
   serverSelectionTimeoutMS: 10000,
@@ -18,26 +17,34 @@ const options: MongoClientOptions = {
 
 // Cache the MongoClient on globalThis to prevent multiple connections in dev
 const globalWithMongo = globalThis as typeof globalThis & {
-  _mongoClient?: MongoClient;
   _mongoClientPromise?: Promise<MongoClient>;
 };
 
-let clientPromise: Promise<MongoClient>;
-
-if (process.env.NODE_ENV === "development") {
-  if (!globalWithMongo._mongoClientPromise) {
-    const client = new MongoClient(MONGODB_URI, options);
-    globalWithMongo._mongoClientPromise = client.connect();
-  }
-  clientPromise = globalWithMongo._mongoClientPromise;
-} else {
+function createClientPromise(): Promise<MongoClient> {
   const client = new MongoClient(MONGODB_URI, options);
-  clientPromise = client.connect();
+  const promise = client.connect();
+
+  // If connection fails, clear the cache so the next call can retry
+  promise.catch(() => {
+    if (globalWithMongo._mongoClientPromise === promise) {
+      globalWithMongo._mongoClientPromise = undefined;
+    }
+  });
+
+  return promise;
+}
+
+function getClientPromise(): Promise<MongoClient> {
+  if (process.env.NODE_ENV === "development") {
+    if (!globalWithMongo._mongoClientPromise) {
+      globalWithMongo._mongoClientPromise = createClientPromise();
+    }
+    return globalWithMongo._mongoClientPromise;
+  }
+  return createClientPromise();
 }
 
 export async function getDb(): Promise<Db> {
-  const client = await clientPromise;
+  const client = await getClientPromise();
   return client.db(DB_NAME);
 }
-
-export { clientPromise };
