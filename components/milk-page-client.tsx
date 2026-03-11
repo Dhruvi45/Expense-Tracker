@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -13,26 +15,52 @@ import {
 } from "@/components/ui/table";
 import { MilkEntryForm } from "@/components/milk-entry-form";
 import { MilkCalendar } from "@/components/milk-calendar";
-import { deleteMilkEntry } from "@/app/milk/actions";
-import type { MilkEntry, MilkMonthlySummary } from "@/lib/types";
+import { deleteMilkEntry, updateMilkSettings } from "@/app/milk/actions";
+import type { MilkEntry, MilkMonthlySummary, MilkSettings } from "@/lib/types";
 import {
   Trash2,
   Milk,
   IndianRupee,
   CalendarDays,
   TrendingUp,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 
 interface MilkPageClientProps {
   initialEntries: MilkEntry[];
   monthlySummaries: MilkMonthlySummary[];
+  milkSettings: MilkSettings;
 }
 
 export function MilkPageClient({
   initialEntries,
   monthlySummaries,
+  milkSettings,
 }: MilkPageClientProps) {
   const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState(milkSettings.pricePerUnit.toString());
+  const [currentPrice, setCurrentPrice] = useState(milkSettings.pricePerUnit);
+  const [savingPrice, setSavingPrice] = useState(false);
+
+  async function handleSavePrice() {
+    setSavingPrice(true);
+    const formData = new FormData();
+    formData.set("pricePerUnit", priceInput);
+    const result = await updateMilkSettings(formData);
+    setSavingPrice(false);
+    if (!result.error) {
+      setCurrentPrice(parseFloat(priceInput));
+      setEditingPrice(false);
+    }
+  }
+
+  function handleCancelPrice() {
+    setPriceInput(currentPrice.toString());
+    setEditingPrice(false);
+  }
 
   // Current month stats
   const now = new Date();
@@ -73,6 +101,45 @@ export function MilkPageClient({
           <MilkEntryForm />
         </div>
       </div>
+
+      {/* Price per Liter Setting */}
+      <Card>
+        <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Price per Liter (common for all entries)</span>
+          </div>
+          {editingPrice ? (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="milk-price-setting" className="sr-only">Price per Liter</Label>
+              <span className="text-sm text-muted-foreground">₹</span>
+              <Input
+                id="milk-price-setting"
+                type="number"
+                step="0.01"
+                min="0"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+                className="w-28"
+                autoFocus
+              />
+              <Button size="icon" variant="default" onClick={handleSavePrice} disabled={savingPrice}>
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={handleCancelPrice}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold">₹{currentPrice.toFixed(2)}</span>
+              <Button size="icon" variant="ghost" onClick={() => setEditingPrice(true)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

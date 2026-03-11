@@ -28,9 +28,6 @@ export function MilkEntryForm({ entry, defaultDate }: MilkEntryFormProps) {
       : defaultDate ?? new Date().toISOString().split("T")[0]
   );
   const [quantity, setQuantity] = useState(entry?.quantity?.toString() ?? "");
-  const [pricePerUnit, setPricePerUnit] = useState(
-    entry?.pricePerUnit?.toString() ?? ""
-  );
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +41,6 @@ export function MilkEntryForm({ entry, defaultDate }: MilkEntryFormProps) {
     const formData = new FormData();
     formData.set("date", date);
     formData.set("quantity", quantity);
-    formData.set("pricePerUnit", pricePerUnit);
     if (isEdit) {
       formData.set("id", entry._id);
     }
@@ -61,7 +57,6 @@ export function MilkEntryForm({ entry, defaultDate }: MilkEntryFormProps) {
       setOpen(false);
       if (!isEdit) {
         setQuantity("");
-        // Keep price for convenience (often same each day)
       }
     }
   }
@@ -106,20 +101,6 @@ export function MilkEntryForm({ entry, defaultDate }: MilkEntryFormProps) {
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="e.g. 1.5"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="milk-price">Price per Liter</Label>
-            <Input
-              id="milk-price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={pricePerUnit}
-              onChange={(e) => setPricePerUnit(e.target.value)}
-              placeholder="0.00"
               required
             />
           </div>

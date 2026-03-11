@@ -3,7 +3,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { revalidatePath } from "next/cache";
-import type { MilkEntry, MilkEntryDoc, MilkMonthlySummary } from "@/lib/types";
+import type { MilkEntry, MilkEntryDoc, MilkMonthlySummary, MilkSettings } from "@/lib/types";
 
 function serializeEntry(doc: MilkEntryDoc): MilkEntry {
   return {
@@ -37,16 +37,40 @@ export async function getMilkEntries(month?: string): Promise<MilkEntry[]> {
   return docs.map(serializeEntry);
 }
 
-export async function addMilkEntry(formData: FormData) {
-  const date = formData.get("date") as string;
-  const quantity = parseFloat(formData.get("quantity") as string);
+export async function getMilkSettings(): Promise<MilkSettings> {
+  const db = await getDb();
+  const doc = await db.collection("milkSettings").findOne({});
+  return { pricePerUnit: doc?.pricePerUnit ?? 0 };
+}
+
+export async function updateMilkSettings(formData: FormData) {
   const pricePerUnit = parseFloat(formData.get("pricePerUnit") as string);
 
-  if (!date || isNaN(quantity) || isNaN(pricePerUnit)) {
-    return { error: "Date, quantity and price per unit are required" };
+  if (isNaN(pricePerUnit) || pricePerUnit < 0) {
+    return { error: "Valid price per liter is required" };
   }
 
   const db = await getDb();
+  await db
+    .collection("milkSettings")
+    .updateOne({}, { $set: { pricePerUnit } }, { upsert: true });
+
+  revalidatePath("/milk");
+  return { success: true };
+}
+
+export async function addMilkEntry(formData: FormData) {
+  const date = formData.get("date") as string;
+  const quantity = parseFloat(formData.get("quantity") as string);
+
+  if (!date || isNaN(quantity)) {
+    return { error: "Date and quantity are required" };
+  }
+
+  const db = await getDb();
+  const settings = await db.collection("milkSettings").findOne({});
+  const pricePerUnit = settings?.pricePerUnit ?? 0;
+
   await db.collection("milkEntries").insertOne({
     date: new Date(date),
     quantity,
@@ -62,9 +86,8 @@ export async function updateMilkEntry(formData: FormData) {
   const id = formData.get("id") as string;
   const date = formData.get("date") as string;
   const quantity = parseFloat(formData.get("quantity") as string);
-  const pricePerUnit = parseFloat(formData.get("pricePerUnit") as string);
 
-  if (!id || !date || isNaN(quantity) || isNaN(pricePerUnit)) {
+  if (!id || !date || isNaN(quantity)) {
     return { error: "All fields are required" };
   }
 
@@ -75,7 +98,6 @@ export async function updateMilkEntry(formData: FormData) {
       $set: {
         date: new Date(date),
         quantity,
-        pricePerUnit,
       },
     }
   );

@@ -117,3 +117,7 @@ export interface MilkMonthlySummary {
   avgPricePerUnit: number;
   entries: number;
 }
+
+export interface MilkSettings {
+  pricePerUnit: number;
+}
