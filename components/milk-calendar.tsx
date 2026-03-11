@@ -54,7 +54,8 @@ export function MilkCalendar({ entries }: MilkCalendarProps) {
   // Day cells
   for (let day = 1; day <= daysInMonth; day++) {
     const dayEntries = entryMap.get(day.toString()) || [];
-    const totalQty = dayEntries.reduce((sum, e) => sum + e.quantity, 0);
+    const totalPackets = dayEntries.reduce((sum, e) => sum + e.packets, 0);
+    const totalLiters = dayEntries.reduce((sum, e) => sum + e.liters, 0);
     const totalCost = dayEntries.reduce((sum, e) => sum + e.total, 0);
     const isToday =
       day === new Date().getDate() &&
@@ -79,8 +80,11 @@ export function MilkCalendar({ entries }: MilkCalendarProps) {
         </span>
         {dayEntries.length > 0 && (
           <div className="mt-1 space-y-0.5">
+            <div className="rounded bg-purple-100 px-1 py-0.5 text-[10px] font-medium text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+              {totalPackets} pkt
+            </div>
             <div className="rounded bg-blue-100 px-1 py-0.5 text-[10px] font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-              {totalQty} L
+              {totalLiters} L
             </div>
             <div className="rounded bg-green-100 px-1 py-0.5 text-[10px] font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
               ₹{totalCost.toFixed(2)}

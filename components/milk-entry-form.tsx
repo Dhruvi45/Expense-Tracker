@@ -27,7 +27,7 @@ export function MilkEntryForm({ entry, defaultDate }: MilkEntryFormProps) {
       ? new Date(entry.date).toISOString().split("T")[0]
       : defaultDate ?? new Date().toISOString().split("T")[0]
   );
-  const [quantity, setQuantity] = useState(entry?.quantity?.toString() ?? "");
+  const [packets, setPackets] = useState(entry?.packets?.toString() ?? "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +40,7 @@ export function MilkEntryForm({ entry, defaultDate }: MilkEntryFormProps) {
 
     const formData = new FormData();
     formData.set("date", date);
-    formData.set("quantity", quantity);
+    formData.set("packets", packets);
     if (isEdit) {
       formData.set("id", entry._id);
     }
@@ -56,7 +56,7 @@ export function MilkEntryForm({ entry, defaultDate }: MilkEntryFormProps) {
     } else {
       setOpen(false);
       if (!isEdit) {
-        setQuantity("");
+        setPackets("");
       }
     }
   }
@@ -92,17 +92,20 @@ export function MilkEntryForm({ entry, defaultDate }: MilkEntryFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="milk-qty">Quantity (liters)</Label>
+            <Label htmlFor="milk-packets">Number of Packets</Label>
             <Input
-              id="milk-qty"
+              id="milk-packets"
               type="number"
-              step="0.1"
-              min="0"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              placeholder="e.g. 1.5"
+              step="0.5"
+              min="0.5"
+              value={packets}
+              onChange={(e) => setPackets(e.target.value)}
+              placeholder="e.g. 2"
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Liters and cost are auto-calculated from packet settings.
+            </p>
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}

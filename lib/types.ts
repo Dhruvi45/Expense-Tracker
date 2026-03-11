@@ -95,29 +95,33 @@ export interface GasCylinder {
 export interface MilkEntryDoc {
   _id: ObjectId;
   date: Date;
-  quantity: number; // liters
-  pricePerUnit: number; // price per liter
+  packets: number;          // number of packets received
+  volumePerPacket: number;  // liters per packet (snapshot from settings at entry time)
+  pricePerPacket: number;   // price per packet (snapshot from settings at entry time)
   createdAt: Date;
 }
 
 export interface MilkEntry {
   _id: string;
   date: string;
-  quantity: number;
-  pricePerUnit: number;
-  total: number; // computed: quantity * pricePerUnit
+  packets: number;
+  liters: number;           // computed: packets × volumePerPacket
+  volumePerPacket: number;
+  pricePerPacket: number;
+  total: number;            // computed: packets × pricePerPacket
   createdAt: string;
 }
 
 export interface MilkMonthlySummary {
   month: string;
   label: string;
-  totalQuantity: number;
+  totalPackets: number;
+  totalLiters: number;
   totalCost: number;
-  avgPricePerUnit: number;
   entries: number;
 }
 
 export interface MilkSettings {
-  pricePerUnit: number;
+  volumePerPacket: number;  // liters per packet
+  pricePerPacket: number;   // price per packet
 }

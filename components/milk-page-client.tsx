@@ -22,7 +22,7 @@ import {
   Milk,
   IndianRupee,
   CalendarDays,
-  TrendingUp,
+  Package,
   Pencil,
   Check,
   X,
@@ -40,42 +40,54 @@ export function MilkPageClient({
   milkSettings,
 }: MilkPageClientProps) {
   const [view, setView] = useState<"calendar" | "list">("calendar");
-  const [editingPrice, setEditingPrice] = useState(false);
-  const [priceInput, setPriceInput] = useState(milkSettings.pricePerUnit.toString());
-  const [currentPrice, setCurrentPrice] = useState(milkSettings.pricePerUnit);
-  const [savingPrice, setSavingPrice] = useState(false);
 
-  async function handleSavePrice() {
-    setSavingPrice(true);
+  // Settings state
+  const [editingSettings, setEditingSettings] = useState(false);
+  const [volumeInput, setVolumeInput] = useState(milkSettings.volumePerPacket.toString());
+  const [priceInput, setPriceInput] = useState(milkSettings.pricePerPacket.toString());
+  const [currentSettings, setCurrentSettings] = useState(milkSettings);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
+
+  async function handleSaveSettings() {
+    setSavingSettings(true);
+    setSettingsError("");
     const formData = new FormData();
-    formData.set("pricePerUnit", priceInput);
+    formData.set("volumePerPacket", volumeInput);
+    formData.set("pricePerPacket", priceInput);
     const result = await updateMilkSettings(formData);
-    setSavingPrice(false);
-    if (!result.error) {
-      setCurrentPrice(parseFloat(priceInput));
-      setEditingPrice(false);
+    setSavingSettings(false);
+    if (result.error) {
+      setSettingsError(result.error);
+    } else {
+      setCurrentSettings({
+        volumePerPacket: parseFloat(volumeInput),
+        pricePerPacket: parseFloat(priceInput),
+      });
+      setEditingSettings(false);
     }
   }
 
-  function handleCancelPrice() {
-    setPriceInput(currentPrice.toString());
-    setEditingPrice(false);
+  function handleCancelSettings() {
+    setVolumeInput(currentSettings.volumePerPacket.toString());
+    setPriceInput(currentSettings.pricePerPacket.toString());
+    setSettingsError("");
+    setEditingSettings(false);
   }
 
   // Current month stats
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const currentMonthSummary = monthlySummaries.find(
-    (s) => s.month === currentMonthKey
-  );
+  const currentMonthSummary = monthlySummaries.find((s) => s.month === currentMonthKey);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Milk Management</h1>
           <p className="text-muted-foreground">
-            Track daily milk delivery, quantity, and cost
+            Track daily milk packets, quantity, and cost
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -102,40 +114,87 @@ export function MilkPageClient({
         </div>
       </div>
 
-      {/* Price per Liter Setting */}
+      {/* Packet Settings Card */}
       <Card>
-        <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Price per Liter (common for all entries)</span>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Package className="h-4 w-4 text-primary" />
+              Packet Settings
+              <span className="text-xs font-normal text-muted-foreground">
+                (common for all entries)
+              </span>
+            </CardTitle>
+            {!editingSettings && (
+              <Button size="sm" variant="outline" onClick={() => setEditingSettings(true)}>
+                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                Edit
+              </Button>
+            )}
           </div>
-          {editingPrice ? (
-            <div className="flex items-center gap-2">
-              <Label htmlFor="milk-price-setting" className="sr-only">Price per Liter</Label>
-              <span className="text-sm text-muted-foreground">₹</span>
-              <Input
-                id="milk-price-setting"
-                type="number"
-                step="0.01"
-                min="0"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-                className="w-28"
-                autoFocus
-              />
-              <Button size="icon" variant="default" onClick={handleSavePrice} disabled={savingPrice}>
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={handleCancelPrice}>
-                <X className="h-4 w-4" />
-              </Button>
+        </CardHeader>
+        <CardContent>
+          {editingSettings ? (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="volume-setting">Volume per Packet (liters)</Label>
+                  <Input
+                    id="volume-setting"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={volumeInput}
+                    onChange={(e) => setVolumeInput(e.target.value)}
+                    placeholder="e.g. 0.5"
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="price-setting">Price per Packet (₹)</Label>
+                  <Input
+                    id="price-setting"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={priceInput}
+                    onChange={(e) => setPriceInput(e.target.value)}
+                    placeholder="e.g. 25.00"
+                  />
+                </div>
+              </div>
+              {settingsError && (
+                <p className="text-sm text-destructive">{settingsError}</p>
+              )}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSaveSettings} disabled={savingSettings}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                  {savingSettings ? "Saving…" : "Save"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleCancelSettings}>
+                  <X className="mr-1.5 h-3.5 w-3.5" />
+                  Cancel
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">₹{currentPrice.toFixed(2)}</span>
-              <Button size="icon" variant="ghost" onClick={() => setEditingPrice(true)}>
-                <Pencil className="h-4 w-4" />
-              </Button>
+            <div className="flex flex-wrap gap-6">
+              <div>
+                <p className="text-xs text-muted-foreground">Volume per Packet</p>
+                <p className="text-xl font-bold">{currentSettings.volumePerPacket} L</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Price per Packet</p>
+                <p className="text-xl font-bold">₹{currentSettings.pricePerPacket.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Price per Liter</p>
+                <p className="text-xl font-bold">
+                  ₹{currentSettings.volumePerPacket > 0
+                    ? (currentSettings.pricePerPacket / currentSettings.volumePerPacket).toFixed(2)
+                    : "—"}
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
@@ -146,15 +205,28 @@ export function MilkPageClient({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              This Month Quantity
+              This Month Packets
+            </CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {currentMonthSummary ? currentMonthSummary.totalPackets : 0}
+            </div>
+            <p className="text-xs text-muted-foreground">packets</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              This Month Liters
             </CardTitle>
             <Milk className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {currentMonthSummary
-                ? `${currentMonthSummary.totalQuantity} L`
-                : "0 L"}
+              {currentMonthSummary ? `${currentMonthSummary.totalLiters} L` : "0 L"}
             </div>
           </CardContent>
         </Card>
@@ -168,27 +240,7 @@ export function MilkPageClient({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ₹
-              {currentMonthSummary
-                ? currentMonthSummary.totalCost.toFixed(2)
-                : "0.00"}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg. Price/Liter
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₹
-              {currentMonthSummary
-                ? currentMonthSummary.avgPricePerUnit.toFixed(2)
-                : "0.00"}
+              ₹{currentMonthSummary ? currentMonthSummary.totalCost.toFixed(2) : "0.00"}
             </div>
           </CardContent>
         </Card>
@@ -220,9 +272,9 @@ export function MilkPageClient({
               <TableHeader>
                 <TableRow>
                   <TableHead>Month</TableHead>
-                  <TableHead className="text-right">Total Qty (L)</TableHead>
+                  <TableHead className="text-right">Packets</TableHead>
+                  <TableHead className="text-right">Total Liters</TableHead>
                   <TableHead className="text-right">Total Cost</TableHead>
-                  <TableHead className="text-right">Avg. Price/L</TableHead>
                   <TableHead className="text-right">Deliveries</TableHead>
                 </TableRow>
               </TableHeader>
@@ -230,15 +282,9 @@ export function MilkPageClient({
                 {monthlySummaries.map((s) => (
                   <TableRow key={s.month}>
                     <TableCell className="font-medium">{s.label}</TableCell>
-                    <TableCell className="text-right">
-                      {s.totalQuantity}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      ₹{s.totalCost.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      ₹{s.avgPricePerUnit.toFixed(2)}
-                    </TableCell>
+                    <TableCell className="text-right">{s.totalPackets}</TableCell>
+                    <TableCell className="text-right">{s.totalLiters} L</TableCell>
+                    <TableCell className="text-right">₹{s.totalCost.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{s.entries}</TableCell>
                   </TableRow>
                 ))}
@@ -278,8 +324,9 @@ function MilkListView({ entries }: { entries: MilkEntry[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
-              <TableHead className="text-right">Quantity (L)</TableHead>
-              <TableHead className="text-right">Price/L</TableHead>
+              <TableHead className="text-right">Packets</TableHead>
+              <TableHead className="text-right">Liters</TableHead>
+              <TableHead className="text-right">Price/Packet</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="w-24">Actions</TableHead>
             </TableRow>
@@ -295,9 +342,10 @@ function MilkListView({ entries }: { entries: MilkEntry[] }) {
                     year: "numeric",
                   })}
                 </TableCell>
-                <TableCell className="text-right">{entry.quantity}</TableCell>
+                <TableCell className="text-right">{entry.packets}</TableCell>
+                <TableCell className="text-right">{entry.liters} L</TableCell>
                 <TableCell className="text-right">
-                  ₹{entry.pricePerUnit.toFixed(2)}
+                  ₹{entry.pricePerPacket.toFixed(2)}
                 </TableCell>
                 <TableCell className="text-right font-medium">
                   ₹{entry.total.toFixed(2)}
