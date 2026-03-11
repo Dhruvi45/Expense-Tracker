@@ -11,13 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { addExpense, updateExpense } from "@/app/expenses/actions";
 import type { Category, Expense } from "@/lib/types";
 import { Plus, Pencil } from "lucide-react";
@@ -121,25 +114,34 @@ export function ExpenseForm({ categories, expense }: ExpenseFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="exp-category">Category</Label>
-            <Select value={categoryId} onValueChange={(val) => setCategoryId(val ?? "")} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat._id} value={cat._id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: cat.color }}
-                      />
-                      {cat.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Category</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {categories.map((cat) => (
+                <label
+                  key={cat._id}
+                  className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                    categoryId === cat._id
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-accent"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="exp-category"
+                    value={cat._id}
+                    checked={categoryId === cat._id}
+                    onChange={() => setCategoryId(cat._id)}
+                    className="sr-only"
+                    required
+                  />
+                  <span
+                    className="inline-block h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: cat.color }}
+                  />
+                  <span className="truncate font-medium">{cat.name}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-2">

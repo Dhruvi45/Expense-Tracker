@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/", label: "Expenses", icon: Receipt },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/gas-cylinder", label: "Gas Cylinder", icon: Flame },
   { href: "/milk", label: "Milk", icon: Milk },
