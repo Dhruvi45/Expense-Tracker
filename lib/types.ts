@@ -15,8 +15,153 @@ export interface ExpenseDoc {
   amount: number;
   description: string;
   categoryId: ObjectId;
+  accountId?: ObjectId;
+  date: Date;
+  dateRangeEnd?: Date;
+  createdAt: Date;
+}
+
+// ---- Account / Budget Bucket types ----
+
+export type AccountType = "dharmik" | "household" | "longterm" | "travel";
+
+export interface AccountDoc {
+  _id: ObjectId;
+  name: string;
+  type: AccountType;
+  color: string;
+  monthlyAllocation: number;
+  currentBalance: number;
+  createdAt: Date;
+}
+
+export interface Account {
+  _id: string;
+  name: string;
+  type: AccountType;
+  color: string;
+  monthlyAllocation: number;
+  currentBalance: number;
+  createdAt: string;
+}
+
+export type TransactionReason =
+  | "monthly_allocation"
+  | "expense"
+  | "manual"
+  | "income_split"
+  | "pdf_import"
+  | "expense_reversal";
+
+export interface AccountTransactionDoc {
+  _id: ObjectId;
+  accountId: ObjectId;
+  type: "credit" | "debit";
+  amount: number;
+  reason: TransactionReason;
+  note: string;
+  date: Date;
+  expenseId?: ObjectId;
+  createdAt: Date;
+}
+
+export interface AccountTransaction {
+  _id: string;
+  accountId: string;
+  type: "credit" | "debit";
+  amount: number;
+  reason: TransactionReason;
+  note: string;
+  date: string;
+  expenseId?: string;
+  createdAt: string;
+}
+
+// ---- Income types ----
+
+export interface IncomeEntryDoc {
+  _id: ObjectId;
+  amount: number;
+  month: string; // YYYY-MM
+  source: string;
+  note: string;
+  createdAt: Date;
+}
+
+export interface IncomeEntry {
+  _id: string;
+  amount: number;
+  month: string;
+  source: string;
+  note: string;
+  createdAt: string;
+}
+
+// ---- Savings types ----
+
+export type SavingsReason =
+  | "monthly_auto"
+  | "manual"
+  | "income_split"
+  | "goal_withdrawal";
+
+export interface SavingsEntryDoc {
+  _id: ObjectId;
+  type: "deposit" | "withdrawal";
+  amount: number;
+  reason: SavingsReason;
+  note: string;
+  goalId?: ObjectId;
   date: Date;
   createdAt: Date;
+}
+
+export interface SavingsEntry {
+  _id: string;
+  type: "deposit" | "withdrawal";
+  amount: number;
+  reason: SavingsReason;
+  note: string;
+  goalId?: string;
+  goalName?: string;
+  date: string;
+  createdAt: string;
+}
+
+export interface SavingsGoalDoc {
+  _id: ObjectId;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline?: Date;
+  color: string;
+  createdAt: Date;
+}
+
+export interface SavingsGoal {
+  _id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline?: string;
+  color: string;
+  createdAt: string;
+}
+
+export interface SavingsConfigDoc {
+  monthlyAutoDeposit: number;
+  updatedAt: Date;
+}
+
+export interface SavingsConfig {
+  monthlyAutoDeposit: number;
+  updatedAt: string;
+}
+
+export interface SavingsSummary {
+  totalBalance: number;
+  thisMonthDeposited: number;
+  thisMonthWithdrawn: number;
 }
 
 // ---- Serialized types (for client components) ----
@@ -34,9 +179,12 @@ export interface Expense {
   amount: number;
   description: string;
   categoryId: string;
+  accountId?: string;
+  accountName?: string;
   categoryName?: string;
   categoryColor?: string;
   date: string;
+  dateRangeEnd?: string;
   createdAt: string;
 }
 

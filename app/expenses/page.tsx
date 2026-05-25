@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { getExpenses, deleteExpense } from "./actions";
 import { getCategories } from "@/app/categories/actions";
+import { getAccounts } from "@/app/accounts/actions";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpenseFilters } from "@/components/expense-filters";
 import { Button } from "@/components/ui/button";
@@ -27,9 +28,10 @@ interface ExpensesPageProps {
 
 export default async function ExpensesPage({ searchParams }: ExpensesPageProps) {
   const params = await searchParams;
-  const [expenses, categories] = await Promise.all([
+  const [expenses, categories, accounts] = await Promise.all([
     getExpenses(params.category, params.startDate, params.endDate),
     getCategories(),
+    getAccounts(),
   ]);
 
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -43,7 +45,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
             {expenses.length} expense{expenses.length !== 1 ? "s" : ""} &middot; Total: ₹{total.toFixed(2)}
           </p>
         </div>
-        <ExpenseForm categories={categories} />
+        <ExpenseForm categories={categories} accounts={accounts} />
       </div>
 
       <ExpenseFilters categories={categories} />
@@ -84,11 +86,15 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                           {expense.categoryName}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {new Date(expense.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {expense.dateRangeEnd ? (
+                            <>
+                              {new Date(expense.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                              {" – "}
+                              {new Date(expense.dateRangeEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            </>
+                          ) : (
+                            new Date(expense.date).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
+                          )}
                         </span>
                       </div>
                     </div>
@@ -97,7 +103,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                         ₹{expense.amount.toFixed(2)}
                       </span>
                       <div className="flex items-center gap-0.5">
-                        <ExpenseForm categories={categories} expense={expense} />
+                        <ExpenseForm categories={categories} accounts={accounts} expense={expense} />
                         <DeleteExpenseButton id={expense._id} />
                       </div>
                     </div>
@@ -123,12 +129,17 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                 <TableBody>
                   {expenses.map((expense) => (
                     <TableRow key={expense._id}>
-                      <TableCell className="whitespace-nowrap">
-                        {new Date(expense.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {expense.dateRangeEnd ? (
+                          <div>
+                            <p>{new Date(expense.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                            <p className="text-xs text-muted-foreground">
+                              to {new Date(expense.dateRangeEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            </p>
+                          </div>
+                        ) : (
+                          new Date(expense.date).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
+                        )}
                       </TableCell>
                       <TableCell>
                         <div>
@@ -160,6 +171,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                         <div className="flex items-center gap-1">
                           <ExpenseForm
                             categories={categories}
+                            accounts={accounts}
                             expense={expense}
                           />
                           <DeleteExpenseButton id={expense._id} />

@@ -1,19 +1,31 @@
-const CACHE_NAME = "expense-tracker-v1";
+// ⚠️  Bump this version string on every deployment so the old cache is wiped.
+const CACHE_VERSION = "v2";
+const CACHE_NAME = `expense-tracker-${CACHE_VERSION}`;
 
-// Assets to pre-cache on install
-const PRECACHE_URLS = ["/", "/dashboard", "/reports"];
+// Only pre-cache the offline fallback page — NOT real routes.
+// Next.js HTML pages must always be fetched fresh so UI changes appear immediately.
+const PRECACHE_URLS = ["/offline"];
 
-// Install: pre-cache shell routes
+// Install: pre-cache offline fallback only
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then((cache) =>
+        // addAll fails silently if the page doesn't exist, so use individual adds
+        Promise.allSettled(
+          PRECACHE_URLS.map((url) =>
+            cache.add(url).catch(() => {
+              /* offline page may not exist yet – ignore */
+            })
+          )
+        )
+      )
       .then(() => self.skipWaiting())
   );
 });
 
-// Activate: clean up old caches
+// Activate: delete every cache that doesn't match the current version
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -29,48 +41,28 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Fetch: network-first for API calls, cache-first for static assets
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests and cross-origin requests
+  // Skip non-GET and cross-origin requests entirely
   if (request.method !== "GET" || url.origin !== self.location.origin) {
     return;
   }
 
-  // Network-first for API and dynamic routes
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_next/")) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful _next/static responses
-          if (
-            response.ok &&
-            url.pathname.startsWith("/_next/static/")
-          ) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // Cache-first for icons and other static public assets
-  if (
-    url.pathname.startsWith("/icons/") ||
-    url.pathname.match(/\.(png|jpg|svg|ico|webp)$/)
-  ) {
+  // ── Next.js hashed static chunks (/\_next/static/) ──────────────────────
+  // These filenames are content-hashed by Next.js, so it is safe to cache
+  // them indefinitely. Serve from cache, fall back to network.
+  if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
       caches.match(request).then(
         (cached) =>
           cached ||
           fetch(request).then((response) => {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
             return response;
           })
       )
@@ -78,14 +70,52 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Network-first for page navigations with offline fallback
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        return response;
-      })
-      .catch(() => caches.match(request))
-  );
+  // ── API routes ───────────────────────────────────────────────────────────
+  // Always network-only; never serve stale API data from cache.
+  if (url.pathname.startsWith("/api/")) {
+    return; // let the browser handle it normally
+  }
+
+  // ── Static public assets (icons, images) ────────────────────────────────
+  if (
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.match(/\.(png|jpg|jpeg|svg|ico|webp|woff2?)$/)
+  ) {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) =>
+          cached ||
+          fetch(request).then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
+            return response;
+          })
+      )
+    );
+    return;
+  }
+
+  // ── Page navigations (HTML) ──────────────────────────────────────────────
+  // Network-first, NO caching of HTML responses.
+  // This guarantees that new deployments are always reflected immediately.
+  // Falls back to the offline page if the network is unavailable.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match("/offline").then(
+          (offline) => offline || new Response("You are offline.", { status: 503 })
+        )
+      )
+    );
+    return;
+  }
+});
+
+// Notify all open tabs when a new SW has taken control so they can reload.
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });

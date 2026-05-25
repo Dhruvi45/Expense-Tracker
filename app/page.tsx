@@ -2,7 +2,9 @@ export const dynamic = "force-dynamic";
 
 import { getExpenses, deleteExpense } from "./expenses/actions";
 import { getCategories } from "@/app/categories/actions";
+import { getAccounts } from "@/app/accounts/actions";
 import { ExpenseForm } from "@/components/expense-form";
+import { StatementUpload } from "@/components/statement-upload";
 import { ExpenseFilters } from "@/components/expense-filters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,9 +29,10 @@ interface HomePageProps {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
-  const [expenses, categories] = await Promise.all([
+  const [expenses, categories, accounts] = await Promise.all([
     getExpenses(params.category, params.startDate, params.endDate),
     getCategories(),
+    getAccounts(),
   ]);
 
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -43,7 +46,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             {expenses.length} expense{expenses.length !== 1 ? "s" : ""} &middot; Total: ₹{total.toFixed(2)}
           </p>
         </div>
-        <ExpenseForm categories={categories} />
+        <div className="flex flex-wrap gap-2">
+          <StatementUpload categories={categories} accounts={accounts} />
+          <ExpenseForm categories={categories} accounts={accounts} />
+        </div>
       </div>
 
       <ExpenseFilters categories={categories} />
@@ -77,20 +83,30 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         ₹{expense.amount.toFixed(2)}
                       </span>
                       <div className="flex items-center gap-0.5">
-                        <ExpenseForm categories={categories} expense={expense} />
+                        <ExpenseForm categories={categories} accounts={accounts} expense={expense} />
                         <DeleteExpenseButton id={expense._id} />
                       </div>
                     </div>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                     <div>
-                      <p className="text-xs text-muted-foreground">Date</p>
+                      <p className="text-xs text-muted-foreground">
+                        {expense.dateRangeEnd ? "Date Range" : "Date"}
+                      </p>
                       <p className="font-medium">
-                        {new Date(expense.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                        {expense.dateRangeEnd ? (
+                          <>
+                            {new Date(expense.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            {" – "}
+                            {new Date(expense.dateRangeEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </>
+                        ) : (
+                          new Date(expense.date).toLocaleDateString("en-IN", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        )}
                       </p>
                     </div>
                     <div>
@@ -107,6 +123,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         {expense.categoryName}
                       </Badge>
                     </div>
+                    {expense.accountName && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground">Account</p>
+                        <p className="text-xs font-medium">{expense.accountName}</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -122,6 +144,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     <TableHead>Date</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Account</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
@@ -129,12 +152,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <TableBody>
                   {expenses.map((expense) => (
                     <TableRow key={expense._id}>
-                      <TableCell className="whitespace-nowrap">
-                        {new Date(expense.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {expense.dateRangeEnd ? (
+                          <div>
+                            <p>{new Date(expense.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                            <p className="text-xs text-muted-foreground">
+                              to {new Date(expense.dateRangeEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            </p>
+                          </div>
+                        ) : (
+                          new Date(expense.date).toLocaleDateString("en-IN", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        )}
                       </TableCell>
                       <TableCell>
                         <div>
@@ -159,6 +191,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                           {expense.categoryName}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {expense.accountName ?? "—"}
+                      </TableCell>
                       <TableCell className="text-right font-medium">
                         ₹{expense.amount.toFixed(2)}
                       </TableCell>
@@ -166,6 +201,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         <div className="flex items-center gap-1">
                           <ExpenseForm
                             categories={categories}
+                            accounts={accounts}
                             expense={expense}
                           />
                           <DeleteExpenseButton id={expense._id} />

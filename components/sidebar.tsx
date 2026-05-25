@@ -9,11 +9,17 @@ import {
   BarChart3,
   Flame,
   Milk,
+  Wallet,
+  PiggyBank,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Expenses", icon: Receipt },
+  { href: "/accounts", label: "Accounts", icon: Wallet },
+  { href: "/savings", label: "Savings", icon: PiggyBank },
+  { href: "/income", label: "Income", icon: TrendingUp },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/gas-cylinder", label: "Gas", icon: Flame },
