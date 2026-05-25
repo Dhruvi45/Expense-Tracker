@@ -72,7 +72,7 @@ export function Sidebar() {
       </aside>
 
       {/* ── Mobile top header ── */}
-      <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center border-b border-border bg-background/95 backdrop-blur-sm px-4 md:hidden">
+      <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center border-b border-border bg-background px-4 md:hidden">
         <Receipt className="h-5 w-5 text-primary" />
         <span className="ml-2 text-base font-semibold">Expense Tracker</span>
       </header>
@@ -80,7 +80,7 @@ export function Sidebar() {
       {/* ── More drawer backdrop ── */}
       {moreOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setMoreOpen(false)}
         />
       )}
@@ -143,7 +143,7 @@ export function Sidebar() {
 
       {/* ── Mobile bottom navigation ── */}
       <nav
-        className="fixed left-0 right-0 z-40 md:hidden bg-background/95 backdrop-blur-sm border-t border-border"
+        className="fixed left-0 right-0 z-40 md:hidden bg-background border-t border-border"
         style={{
           bottom: 0,
           paddingBottom: "env(safe-area-inset-bottom)",
