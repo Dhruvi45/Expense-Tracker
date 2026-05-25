@@ -52,7 +52,7 @@ export default function RootLayout({
         <div className="flex min-h-screen">
           <Sidebar />
           <main className="flex-1 overflow-auto">
-            <div className="mx-auto max-w-7xl px-4 pt-16 pb-20 md:px-8 md:py-8">
+            <div className="mx-auto max-w-7xl px-4 pt-16 md:px-8 md:py-8" style={{ paddingBottom: "calc(4.5rem + env(safe-area-inset-bottom))" }}>
               {children}
             </div>
           </main>
