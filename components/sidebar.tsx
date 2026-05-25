@@ -94,7 +94,7 @@ export function Sidebar() {
         )}
         style={{
           bottom: 0,
-          paddingBottom: "calc(4.5rem + env(safe-area-inset-bottom))",
+          paddingBottom: "calc(6rem + env(safe-area-inset-bottom))",
         }}
       >
         {/* Drag handle */}
@@ -149,13 +149,13 @@ export function Sidebar() {
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <div className="flex items-stretch h-16">
+        <div className="flex items-stretch h-20">
           {primaryNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+                "flex flex-1 flex-col items-center justify-center gap-1.5 text-xs font-medium transition-colors",
                 isActive(item.href)
                   ? "text-primary"
                   : "text-muted-foreground active:text-foreground"
@@ -163,13 +163,13 @@ export function Sidebar() {
             >
               <div
                 className={cn(
-                  "flex h-7 w-12 items-center justify-center rounded-full transition-all duration-200",
+                  "flex h-9 w-14 items-center justify-center rounded-full transition-all duration-200",
                   isActive(item.href) ? "bg-primary/15" : ""
                 )}
               >
                 <item.icon
                   className={cn(
-                    "h-5 w-5 transition-all",
+                    "h-6 w-6 transition-all",
                     isActive(item.href) && "stroke-[2.5]"
                   )}
                 />
@@ -182,7 +182,7 @@ export function Sidebar() {
           <button
             onClick={() => setMoreOpen((v) => !v)}
             className={cn(
-              "flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+              "flex flex-1 flex-col items-center justify-center gap-1.5 text-xs font-medium transition-colors",
               anySecondaryActive || moreOpen
                 ? "text-primary"
                 : "text-muted-foreground active:text-foreground"
@@ -190,13 +190,13 @@ export function Sidebar() {
           >
             <div
               className={cn(
-                "flex h-7 w-12 items-center justify-center rounded-full transition-all duration-200",
+                "flex h-9 w-14 items-center justify-center rounded-full transition-all duration-200",
                 anySecondaryActive || moreOpen ? "bg-primary/15" : ""
               )}
             >
               <MoreHorizontal
                 className={cn(
-                  "h-5 w-5 transition-all",
+                  "h-6 w-6 transition-all",
                   (anySecondaryActive || moreOpen) && "stroke-[2.5]"
                 )}
               />
