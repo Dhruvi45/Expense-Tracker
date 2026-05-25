@@ -1,35 +1,36 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/mongodb";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const db = await getDb();
-
     const now = new Date();
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-    // Total this month
-    const thisMonthResult = await db
-      .collection("expenses")
-      .aggregate([
-        { $match: { date: { $gte: thisMonthStart } } },
-        { $group: { _id: null, total: { $sum: "$amount" } } },
-      ])
-      .toArray();
+    const [thisMonthAgg, lastMonthAgg, topCategoryAgg, totalCount, categoryCount] =
+      await Promise.all([
+        prisma.expense.aggregate({
+          where: { date: { gte: thisMonthStart } },
+          _sum: { amount: true },
+        }),
+        prisma.expense.aggregate({
+          where: { date: { gte: lastMonthStart, lte: lastMonthEnd } },
+          _sum: { amount: true },
+        }),
+        prisma.expense.groupBy({
+          by: ["categoryId"],
+          where: { date: { gte: thisMonthStart } },
+          _sum: { amount: true },
+          orderBy: { _sum: { amount: "desc" } },
+          take: 5,
+        }),
+        prisma.expense.count(),
+        prisma.category.count(),
+      ]);
 
-    // Total last month
-    const lastMonthResult = await db
-      .collection("expenses")
-      .aggregate([
-        { $match: { date: { $gte: lastMonthStart, $lte: lastMonthEnd } } },
-        { $group: { _id: null, total: { $sum: "$amount" } } },
-      ])
-      .toArray();
-
-    const totalThisMonth = thisMonthResult[0]?.total || 0;
-    const totalLastMonth = lastMonthResult[0]?.total || 0;
+    const totalThisMonth = thisMonthAgg._sum.amount ?? 0;
+    const totalLastMonth = lastMonthAgg._sum.amount ?? 0;
     const percentChange =
       totalLastMonth > 0
         ? ((totalThisMonth - totalLastMonth) / totalLastMonth) * 100
@@ -37,52 +38,26 @@ export async function GET() {
         ? 100
         : 0;
 
-    // Top 5 categories this month
-    const topCategories = await db
-      .collection("expenses")
-      .aggregate([
-        { $match: { date: { $gte: thisMonthStart } } },
-        { $group: { _id: "$categoryId", total: { $sum: "$amount" } } },
-        { $sort: { total: -1 } },
-        { $limit: 5 },
-        {
-          $lookup: {
-            from: "categories",
-            localField: "_id",
-            foreignField: "_id",
-            as: "category",
-          },
-        },
-        { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-        {
-          $project: {
-            name: { $ifNull: ["$category.name", "Uncategorized"] },
-            color: { $ifNull: ["$category.color", "#64748b"] },
-            total: 1,
-          },
-        },
-      ])
-      .toArray();
-
-    // Total expense count
-    const totalCount = await db.collection("expenses").countDocuments();
-
-    // Total categories count
-    const categoryCount = await db.collection("categories").countDocuments();
-
-    return NextResponse.json({
-      totalThisMonth,
-      totalLastMonth,
-      percentChange: Math.round(percentChange * 100) / 100,
-      topCategories,
-      totalCount,
-      categoryCount,
+    // Resolve category names/colors for the top groups
+    const categoryIds = topCategoryAgg.map((g) => g.categoryId);
+    const categories = await prisma.category.findMany({
+      where: { id: { in: categoryIds } },
+      select: { id: true, name: true, color: true },
     });
+    const catMap = new Map(categories.map((c) => [c.id, c]));
+
+    const topCategories = topCategoryAgg.map((g) => ({
+      name: catMap.get(g.categoryId)?.name ?? "Uncategorized",
+      color: catMap.get(g.categoryId)?.color ?? "#64748b",
+      total: g._sum.amount ?? 0,
+    }));
+
+    return NextResponse.json(
+      { totalThisMonth, totalLastMonth, percentChange: Math.round(percentChange * 100) / 100, topCategories, totalCount, categoryCount },
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+    );
   } catch (error) {
     console.error("Summary API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch summary" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch summary" }, { status: 500 });
   }
 }

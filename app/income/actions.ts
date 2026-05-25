@@ -1,65 +1,47 @@
 "use server";
 
-import { ObjectId } from "mongodb";
-import { getDb } from "@/lib/mongodb";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import type { IncomeEntry, IncomeEntryDoc } from "@/lib/types";
-
-function serializeEntry(doc: IncomeEntryDoc): IncomeEntry {
-  return {
-    _id: doc._id.toHexString(),
-    amount: doc.amount,
-    month: doc.month,
-    source: doc.source || "",
-    note: doc.note || "",
-    createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : new Date(doc.createdAt).toISOString(),
-  };
-}
+import type { IncomeEntry } from "@/lib/types";
 
 export async function getIncomeEntries(month?: string): Promise<IncomeEntry[]> {
-  const db = await getDb();
-  const filter: Record<string, unknown> = {};
-  if (month) filter.month = month;
+  const docs = await prisma.incomeEntry.findMany({
+    where: month ? { month } : {},
+    orderBy: [{ month: "desc" }, { createdAt: "desc" }],
+  });
 
-  const docs = await db
-    .collection<IncomeEntryDoc>("incomeEntries")
-    .find(filter)
-    .sort({ month: -1, createdAt: -1 })
-    .toArray();
-
-  return docs.map(serializeEntry);
+  return docs.map((doc) => ({
+    _id: doc.id,
+    amount: doc.amount,
+    month: doc.month,
+    source: doc.source,
+    note: doc.note,
+    createdAt: doc.createdAt.toISOString(),
+  }));
 }
 
 export async function getIncomeMonthlySummaries(): Promise<
   { month: string; label: string; total: number; entries: number }[]
 > {
-  const db = await getDb();
-  const agg = await db
-    .collection("incomeEntries")
-    .aggregate([
-      {
-        $group: {
-          _id: "$month",
-          total: { $sum: "$amount" },
-          entries: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: -1 } },
-      { $limit: 12 },
-    ])
-    .toArray();
+  const grouped = await prisma.incomeEntry.groupBy({
+    by: ["month"],
+    _sum: { amount: true },
+    _count: { _all: true },
+    orderBy: { month: "desc" },
+    take: 12,
+  });
 
-  return agg.map((row) => {
-    const [year, mon] = (row._id as string).split("-");
+  return grouped.map((row) => {
+    const [year, mon] = row.month.split("-");
     const label = new Date(Number(year), Number(mon) - 1, 1).toLocaleDateString("en-IN", {
       month: "short",
       year: "numeric",
     });
     return {
-      month: row._id as string,
+      month: row.month,
       label,
-      total: row.total as number,
-      entries: row.entries as number,
+      total: row._sum.amount ?? 0,
+      entries: row._count._all,
     };
   });
 }
@@ -74,13 +56,13 @@ export async function addIncomeEntry(formData: FormData) {
     return { error: "Amount and month are required" };
   }
 
-  const db = await getDb();
-  await db.collection("incomeEntries").insertOne({
-    amount,
-    month: month.slice(0, 7),
-    source: source.trim(),
-    note: note.trim(),
-    createdAt: new Date(),
+  await prisma.incomeEntry.create({
+    data: {
+      amount,
+      month: month.slice(0, 7),
+      source: source.trim(),
+      note: note.trim(),
+    },
   });
 
   revalidatePath("/income");
@@ -88,8 +70,7 @@ export async function addIncomeEntry(formData: FormData) {
 }
 
 export async function deleteIncomeEntry(id: string) {
-  const db = await getDb();
-  await db.collection("incomeEntries").deleteOne({ _id: new ObjectId(id) });
+  await prisma.incomeEntry.delete({ where: { id } });
   revalidatePath("/income");
   return { success: true };
 }

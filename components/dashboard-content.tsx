@@ -1,66 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
 import { CategoryPieChart } from "@/components/charts/category-pie-chart";
 import { Tags } from "lucide-react";
 import type { MonthlyTrend, CategoryBreakdown } from "@/lib/types";
 
-export function DashboardContent() {
-  const [trends, setTrends] = useState<MonthlyTrend[]>([]);
-  const [categoryData, setCategoryData] = useState<CategoryBreakdown[]>([]);
-  const [topCategories, setTopCategories] = useState<{ name: string; color: string; total: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+interface DashboardContentProps {
+  trends: MonthlyTrend[];
+  categoryData: CategoryBreakdown[];
+  topCategories: { name: string; color: string; total: number }[];
+}
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [summaryRes, trendsRes, categoryRes] = await Promise.all([
-          fetch("/api/reports/summary"),
-          fetch("/api/reports/trends"),
-          fetch("/api/reports/by-category"),
-        ]);
-
-        const summaryData = await summaryRes.json();
-        const trendsData = await trendsRes.json();
-        const categoryResData = await categoryRes.json();
-
-        if (summaryData.topCategories) setTopCategories(summaryData.topCategories);
-        if (Array.isArray(trendsData)) setTrends(trendsData);
-        if (categoryResData.breakdown) setCategoryData(categoryResData.breakdown);
-      } catch (error) {
-        console.error("Failed to fetch dashboard chart data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="grid gap-6 lg:grid-cols-2">
-        {[...Array(2)].map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="h-[300px] animate-pulse rounded bg-muted" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
+export function DashboardContent({ trends, categoryData, topCategories }: DashboardContentProps) {
   return (
     <div className="space-y-6">
-      {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
         <MonthlyBarChart data={trends} />
         <CategoryPieChart data={categoryData} />
       </div>
 
-      {/* Top Categories */}
       {topCategories.length > 0 && (
         <Card>
           <CardHeader>

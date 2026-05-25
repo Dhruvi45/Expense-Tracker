@@ -1,55 +1,16 @@
 "use server";
 
-import { ObjectId } from "mongodb";
-import { getDb } from "@/lib/mongodb";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import type {
-  SavingsEntry,
-  SavingsEntryDoc,
-  SavingsGoal,
-  SavingsGoalDoc,
-  SavingsConfig,
-  SavingsConfigDoc,
-  SavingsSummary,
-  SavingsReason,
-} from "@/lib/types";
-
-function serializeEntry(
-  doc: SavingsEntryDoc & { goalName?: string }
-): SavingsEntry {
-  return {
-    _id: doc._id.toHexString(),
-    type: doc.type,
-    amount: doc.amount,
-    reason: doc.reason,
-    note: doc.note || "",
-    goalId: doc.goalId?.toHexString(),
-    goalName: doc.goalName,
-    date: doc.date instanceof Date ? doc.date.toISOString() : new Date(doc.date).toISOString(),
-    createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : new Date(doc.createdAt).toISOString(),
-  };
-}
-
-function serializeGoal(doc: SavingsGoalDoc): SavingsGoal {
-  return {
-    _id: doc._id.toHexString(),
-    name: doc.name,
-    targetAmount: doc.targetAmount,
-    currentAmount: doc.currentAmount,
-    deadline: doc.deadline instanceof Date ? doc.deadline.toISOString() : doc.deadline ? new Date(doc.deadline).toISOString() : undefined,
-    color: doc.color,
-    createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : new Date(doc.createdAt).toISOString(),
-  };
-}
+import type { SavingsEntry, SavingsGoal, SavingsConfig, SavingsSummary } from "@/lib/types";
 
 // ---- Config ----
 
 export async function getSavingsConfig(): Promise<SavingsConfig> {
-  const db = await getDb();
-  const doc = await db.collection<SavingsConfigDoc>("savingsConfig").findOne({});
+  const doc = await prisma.savingsConfig.findFirst();
   return {
     monthlyAutoDeposit: doc?.monthlyAutoDeposit ?? 0,
-    updatedAt: doc?.updatedAt instanceof Date ? doc.updatedAt.toISOString() : new Date().toISOString(),
+    updatedAt: doc?.updatedAt.toISOString() ?? new Date().toISOString(),
   };
 }
 
@@ -58,12 +19,14 @@ export async function updateSavingsConfig(formData: FormData) {
   if (isNaN(monthlyAutoDeposit) || monthlyAutoDeposit < 0) {
     return { error: "Valid amount is required" };
   }
-  const db = await getDb();
-  await db.collection("savingsConfig").updateOne(
-    {},
-    { $set: { monthlyAutoDeposit, updatedAt: new Date() } },
-    { upsert: true }
-  );
+
+  const existing = await prisma.savingsConfig.findFirst();
+  if (existing) {
+    await prisma.savingsConfig.update({ where: { id: existing.id }, data: { monthlyAutoDeposit } });
+  } else {
+    await prisma.savingsConfig.create({ data: { monthlyAutoDeposit } });
+  }
+
   revalidatePath("/savings");
   return { success: true };
 }
@@ -71,23 +34,21 @@ export async function updateSavingsConfig(formData: FormData) {
 // ---- Summary ----
 
 export async function getSavingsSummary(): Promise<SavingsSummary> {
-  const db = await getDb();
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const [allEntries, monthEntries] = await Promise.all([
-    db.collection("savingsEntries").aggregate([
-      { $group: { _id: "$type", total: { $sum: "$amount" } } },
-    ]).toArray(),
-    db.collection("savingsEntries").aggregate([
-      { $match: { date: { $gte: monthStart, $lt: monthEnd } } },
-      { $group: { _id: "$type", total: { $sum: "$amount" } } },
-    ]).toArray(),
+  const [allGrouped, monthGrouped] = await Promise.all([
+    prisma.savingsEntry.groupBy({ by: ["type"], _sum: { amount: true } }),
+    prisma.savingsEntry.groupBy({
+      by: ["type"],
+      where: { date: { gte: monthStart, lt: monthEnd } },
+      _sum: { amount: true },
+    }),
   ]);
 
-  const allMap = new Map(allEntries.map((r) => [r._id, r.total as number]));
-  const monMap = new Map(monthEntries.map((r) => [r._id, r.total as number]));
+  const allMap = new Map(allGrouped.map((r) => [r.type, r._sum.amount ?? 0]));
+  const monMap = new Map(monthGrouped.map((r) => [r.type, r._sum.amount ?? 0]));
 
   return {
     totalBalance: (allMap.get("deposit") ?? 0) - (allMap.get("withdrawal") ?? 0),
@@ -99,84 +60,82 @@ export async function getSavingsSummary(): Promise<SavingsSummary> {
 // ---- Entries ----
 
 export async function getSavingsEntries(month?: string): Promise<SavingsEntry[]> {
-  const db = await getDb();
-  const filter: Record<string, unknown> = {};
+  const where: Parameters<typeof prisma.savingsEntry.findMany>[0]["where"] = {};
   if (month) {
     const [year, mon] = month.split("-").map(Number);
-    filter.date = { $gte: new Date(year, mon - 1, 1), $lt: new Date(year, mon, 1) };
+    where.date = { gte: new Date(year, mon - 1, 1), lt: new Date(year, mon, 1) };
   }
 
-  const docs = await db
-    .collection("savingsEntries")
-    .aggregate([
-      { $match: filter },
-      { $sort: { date: -1 } },
-      {
-        $lookup: {
-          from: "savingsGoals",
-          localField: "goalId",
-          foreignField: "_id",
-          as: "goal",
-        },
-      },
-      { $unwind: { path: "$goal", preserveNullAndEmptyArrays: true } },
-    ])
-    .toArray();
+  const docs = await prisma.savingsEntry.findMany({
+    where,
+    include: { goal: { select: { name: true } } },
+    orderBy: { date: "desc" },
+  });
 
-  return docs.map((doc) =>
-    serializeEntry({ ...(doc as SavingsEntryDoc), goalName: (doc as Record<string, unknown> & { goal?: { name: string } }).goal?.name })
-  );
+  return docs.map((doc) => ({
+    _id: doc.id,
+    type: doc.type as "deposit" | "withdrawal",
+    amount: doc.amount,
+    reason: doc.reason as SavingsEntry["reason"],
+    note: doc.note,
+    goalId: doc.goalId ?? undefined,
+    goalName: doc.goal?.name,
+    date: doc.date.toISOString(),
+    createdAt: doc.createdAt.toISOString(),
+  }));
 }
 
 export async function addSavingsEntry(formData: FormData) {
   const type = formData.get("type") as "deposit" | "withdrawal";
   const amount = parseFloat(formData.get("amount") as string);
-  const reason = (formData.get("reason") as SavingsReason) || "manual";
+  const reason = (formData.get("reason") as SavingsEntry["reason"]) || "manual";
   const note = (formData.get("note") as string) || "";
-  const goalIdStr = formData.get("goalId") as string;
+  const goalId = (formData.get("goalId") as string) || null;
   const dateStr = formData.get("date") as string;
 
   if (!type || isNaN(amount) || amount <= 0) {
     return { error: "Type and a positive amount are required" };
   }
 
-  const db = await getDb();
+  await prisma.$transaction(async (tx) => {
+    await tx.savingsEntry.create({
+      data: {
+        type,
+        amount,
+        reason,
+        note: note.trim(),
+        date: dateStr ? new Date(dateStr) : new Date(),
+        ...(goalId ? { goalId } : {}),
+      },
+    });
 
-  const entry: Omit<SavingsEntryDoc, "_id"> = {
-    type,
-    amount,
-    reason,
-    note: note.trim(),
-    date: dateStr ? new Date(dateStr) : new Date(),
-    createdAt: new Date(),
-  } as Omit<SavingsEntryDoc, "_id">;
-
-  if (goalIdStr) {
-    (entry as SavingsEntryDoc).goalId = new ObjectId(goalIdStr);
-    const goalDelta = type === "deposit" ? amount : -amount;
-    await db.collection("savingsGoals").updateOne(
-      { _id: new ObjectId(goalIdStr) },
-      { $inc: { currentAmount: goalDelta } }
-    );
-  }
-
-  await db.collection("savingsEntries").insertOne(entry);
+    if (goalId) {
+      const goalDelta = type === "deposit" ? amount : -amount;
+      await tx.savingsGoal.update({
+        where: { id: goalId },
+        data: { currentAmount: { increment: goalDelta } },
+      });
+    }
+  });
 
   revalidatePath("/savings");
   return { success: true };
 }
 
 export async function deleteSavingsEntry(id: string) {
-  const db = await getDb();
-  const entry = await db.collection<SavingsEntryDoc>("savingsEntries").findOne({ _id: new ObjectId(id) });
-  if (entry?.goalId) {
-    const goalDelta = entry.type === "deposit" ? -entry.amount : entry.amount;
-    await db.collection("savingsGoals").updateOne(
-      { _id: entry.goalId },
-      { $inc: { currentAmount: goalDelta } }
-    );
-  }
-  await db.collection("savingsEntries").deleteOne({ _id: new ObjectId(id) });
+  const entry = await prisma.savingsEntry.findUnique({ where: { id } });
+
+  await prisma.$transaction(async (tx) => {
+    if (entry?.goalId) {
+      const goalDelta = entry.type === "deposit" ? -entry.amount : entry.amount;
+      await tx.savingsGoal.update({
+        where: { id: entry.goalId },
+        data: { currentAmount: { increment: goalDelta } },
+      });
+    }
+    await tx.savingsEntry.delete({ where: { id } });
+  });
+
   revalidatePath("/savings");
   return { success: true };
 }
@@ -184,13 +143,16 @@ export async function deleteSavingsEntry(id: string) {
 // ---- Goals ----
 
 export async function getSavingsGoals(): Promise<SavingsGoal[]> {
-  const db = await getDb();
-  const docs = await db
-    .collection<SavingsGoalDoc>("savingsGoals")
-    .find({})
-    .sort({ createdAt: 1 })
-    .toArray();
-  return docs.map(serializeGoal);
+  const docs = await prisma.savingsGoal.findMany({ orderBy: { createdAt: "asc" } });
+  return docs.map((doc) => ({
+    _id: doc.id,
+    name: doc.name,
+    targetAmount: doc.targetAmount,
+    currentAmount: doc.currentAmount,
+    deadline: doc.deadline?.toISOString(),
+    color: doc.color,
+    createdAt: doc.createdAt.toISOString(),
+  }));
 }
 
 export async function addSavingsGoal(formData: FormData) {
@@ -203,17 +165,15 @@ export async function addSavingsGoal(formData: FormData) {
     return { error: "Name and target amount are required" };
   }
 
-  const db = await getDb();
-  const doc: Omit<SavingsGoalDoc, "_id"> = {
-    name: name.trim(),
-    targetAmount,
-    currentAmount: 0,
-    color,
-    createdAt: new Date(),
-  } as Omit<SavingsGoalDoc, "_id">;
-  if (deadlineStr) (doc as SavingsGoalDoc).deadline = new Date(deadlineStr);
+  await prisma.savingsGoal.create({
+    data: {
+      name: name.trim(),
+      targetAmount,
+      color,
+      ...(deadlineStr ? { deadline: new Date(deadlineStr) } : {}),
+    },
+  });
 
-  await db.collection("savingsGoals").insertOne(doc);
   revalidatePath("/savings");
   return { success: true };
 }
@@ -229,21 +189,22 @@ export async function updateSavingsGoal(formData: FormData) {
     return { error: "All fields are required" };
   }
 
-  const db = await getDb();
-  const update: Record<string, unknown> = { name: name.trim(), targetAmount, color };
-  if (deadlineStr) update.deadline = new Date(deadlineStr);
+  await prisma.savingsGoal.update({
+    where: { id },
+    data: {
+      name: name.trim(),
+      targetAmount,
+      color,
+      ...(deadlineStr ? { deadline: new Date(deadlineStr) } : { deadline: null }),
+    },
+  });
 
-  await db.collection("savingsGoals").updateOne(
-    { _id: new ObjectId(id) },
-    { $set: update }
-  );
   revalidatePath("/savings");
   return { success: true };
 }
 
 export async function deleteSavingsGoal(id: string) {
-  const db = await getDb();
-  await db.collection("savingsGoals").deleteOne({ _id: new ObjectId(id) });
+  await prisma.savingsGoal.delete({ where: { id } });
   revalidatePath("/savings");
   return { success: true };
 }

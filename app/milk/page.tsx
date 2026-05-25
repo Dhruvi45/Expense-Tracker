@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic";
 
 import { getMilkEntries, getMilkMonthlySummaries, getMilkSettings } from "./actions";
 import { MilkPageClient } from "@/components/milk-page-client";

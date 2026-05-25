@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic";
 
 import { getGasCylinders, deleteGasCylinder } from "./actions";
 import { GasCylinderForm } from "@/components/gas-cylinder-form";

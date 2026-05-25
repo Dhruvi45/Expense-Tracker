@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic";
 
 import { getIncomeEntries, getIncomeMonthlySummaries, deleteIncomeEntry, addIncomeEntry } from "./actions";
 import { Card, CardContent } from "@/components/ui/card";

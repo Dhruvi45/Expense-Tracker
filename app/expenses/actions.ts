@@ -1,34 +1,32 @@
 "use server";
 
-import { ObjectId } from "mongodb";
-import { getDb } from "@/lib/mongodb";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import type { Expense, ExpenseDoc, AccountTransactionDoc } from "@/lib/types";
+import type { Expense } from "@/lib/types";
 
 async function creditAccount(
-  db: Awaited<ReturnType<typeof getDb>>,
-  accountIdStr: string,
+  accountId: string,
   amount: number,
-  expenseId: ObjectId,
+  expenseId: string,
   date: Date,
   reason: "expense" | "expense_reversal"
 ) {
-  const accountId = new ObjectId(accountIdStr);
   const delta = reason === "expense" ? -amount : amount;
-  await db.collection("accounts").updateOne(
-    { _id: accountId },
-    { $inc: { currentBalance: delta } }
-  );
-  await db.collection<Omit<AccountTransactionDoc, "_id">>("accountTransactions").insertOne({
-    accountId,
-    type: reason === "expense" ? "debit" : "credit",
-    amount,
-    reason,
-    note: "",
-    date,
-    expenseId,
-    createdAt: new Date(),
-  } as AccountTransactionDoc);
+  await prisma.account.update({
+    where: { id: accountId },
+    data: { currentBalance: { increment: delta } },
+  });
+  await prisma.accountTransaction.create({
+    data: {
+      accountId,
+      type: reason === "expense" ? "debit" : "credit",
+      amount,
+      reason,
+      note: "",
+      date,
+      expenseId,
+    },
+  });
 }
 
 export async function getExpenses(
@@ -36,64 +34,39 @@ export async function getExpenses(
   startDate?: string,
   endDate?: string
 ): Promise<Expense[]> {
-  const db = await getDb();
-
-  const filter: Record<string, unknown> = {};
-  if (categoryId) {
-    filter.categoryId = new ObjectId(categoryId);
-  }
-  if (startDate || endDate) {
-    filter.date = {};
-    if (startDate) (filter.date as Record<string, unknown>).$gte = new Date(startDate);
-    if (endDate) (filter.date as Record<string, unknown>).$lte = new Date(endDate);
-  }
-
-  const pipeline = [
-    { $match: filter },
-    { $sort: { date: -1 as const } },
-    {
-      $lookup: {
-        from: "categories",
-        localField: "categoryId",
-        foreignField: "_id",
-        as: "category",
-      },
+  const docs = await prisma.expense.findMany({
+    where: {
+      ...(categoryId ? { categoryId } : {}),
+      ...(startDate || endDate
+        ? {
+            date: {
+              ...(startDate ? { gte: new Date(startDate) } : {}),
+              ...(endDate ? { lte: new Date(endDate) } : {}),
+            },
+          }
+        : {}),
     },
-    { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "accounts",
-        localField: "accountId",
-        foreignField: "_id",
-        as: "account",
-      },
+    include: {
+      category: { select: { name: true, color: true } },
+      account: { select: { name: true } },
     },
-    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
-  ];
-
-  const docs = await db
-    .collection<ExpenseDoc>("expenses")
-    .aggregate(pipeline)
-    .toArray();
-
-  return docs.map((doc) => {
-    const d = doc as ExpenseDoc & { account?: { name: string }; category?: { name: string; color: string } };
-    const dateRangeEnd = (doc as ExpenseDoc & { dateRangeEnd?: Date }).dateRangeEnd;
-    return {
-      _id: doc._id.toHexString(),
-      title: doc.title || "",
-      amount: doc.amount,
-      description: doc.description || "",
-      categoryId: doc.categoryId?.toHexString?.() || "",
-      accountId: (doc as Record<string, unknown> & { accountId?: ObjectId }).accountId?.toHexString?.() || undefined,
-      accountName: d.account?.name,
-      categoryName: d.category?.name || "Uncategorized",
-      categoryColor: d.category?.color || "#64748b",
-      date: doc.date instanceof Date ? doc.date.toISOString() : new Date(doc.date).toISOString(),
-      dateRangeEnd: dateRangeEnd instanceof Date ? dateRangeEnd.toISOString() : dateRangeEnd ? new Date(dateRangeEnd).toISOString() : undefined,
-      createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : new Date(doc.createdAt).toISOString(),
-    };
+    orderBy: { date: "desc" },
   });
+
+  return docs.map((doc) => ({
+    _id: doc.id,
+    title: doc.title,
+    amount: doc.amount,
+    description: doc.description,
+    categoryId: doc.categoryId,
+    accountId: doc.accountId ?? undefined,
+    accountName: doc.account?.name,
+    categoryName: doc.category?.name ?? "Uncategorized",
+    categoryColor: doc.category?.color ?? "#64748b",
+    date: doc.date.toISOString(),
+    dateRangeEnd: doc.dateRangeEnd?.toISOString(),
+    createdAt: doc.createdAt.toISOString(),
+  }));
 }
 
 export async function addExpense(formData: FormData) {
@@ -101,37 +74,31 @@ export async function addExpense(formData: FormData) {
   const amount = parseFloat(formData.get("amount") as string);
   const description = formData.get("description") as string;
   const categoryId = formData.get("categoryId") as string;
-  const accountIdStr = formData.get("accountId") as string | null;
+  const accountId = (formData.get("accountId") as string) || null;
   const date = formData.get("date") as string;
-  const dateRangeEndStr = formData.get("dateRangeEnd") as string | null;
+  const dateRangeEndStr = (formData.get("dateRangeEnd") as string) || null;
 
   if (!title || isNaN(amount) || !categoryId || !date) {
     return { error: "Title, amount, category and date are required" };
   }
 
-  const db = await getDb();
   const expenseDate = new Date(date);
 
-  const insertDoc: Record<string, unknown> = {
-    title: title.trim(),
-    amount,
-    description: description?.trim() || "",
-    categoryId: new ObjectId(categoryId),
-    date: expenseDate,
-    createdAt: new Date(),
-  };
-  if (accountIdStr) {
-    insertDoc.accountId = new ObjectId(accountIdStr);
-  }
-  if (dateRangeEndStr) {
-    insertDoc.dateRangeEnd = new Date(dateRangeEndStr);
-  }
+  const expense = await prisma.expense.create({
+    data: {
+      title: title.trim(),
+      amount,
+      description: description?.trim() ?? "",
+      categoryId,
+      ...(accountId ? { accountId } : {}),
+      date: expenseDate,
+      ...(dateRangeEndStr ? { dateRangeEnd: new Date(dateRangeEndStr) } : {}),
+    },
+  });
 
-  const result = await db.collection("expenses").insertOne(insertDoc);
-
-  if (accountIdStr) {
-    await creditAccount(db, accountIdStr, amount, result.insertedId, expenseDate, "expense");
-    revalidatePath(`/accounts/${accountIdStr}/history`);
+  if (accountId) {
+    await creditAccount(accountId, amount, expense.id, expenseDate, "expense");
+    revalidatePath(`/accounts/${accountId}/history`);
     revalidatePath("/accounts");
   }
 
@@ -147,7 +114,7 @@ export async function updateExpense(formData: FormData) {
   const amount = parseFloat(formData.get("amount") as string);
   const description = formData.get("description") as string;
   const categoryId = formData.get("categoryId") as string;
-  const newAccountIdStr = (formData.get("accountId") as string) || null;
+  const newAccountId = (formData.get("accountId") as string) || null;
   const date = formData.get("date") as string;
   const dateRangeEndStr = (formData.get("dateRangeEnd") as string) || null;
 
@@ -155,48 +122,38 @@ export async function updateExpense(formData: FormData) {
     return { error: "All fields are required" };
   }
 
-  const db = await getDb();
   const expenseDate = new Date(date);
+  const oldExpense = await prisma.expense.findUnique({ where: { id } });
+  const oldAccountId = oldExpense?.accountId ?? null;
 
-  // Get old expense to reverse old account debit if account changed
-  const oldExpense = await db.collection<ExpenseDoc>("expenses").findOne({ _id: new ObjectId(id) });
-  const oldAccountId = (oldExpense as (ExpenseDoc & { accountId?: ObjectId }) | null)?.accountId;
-
-  if (oldAccountId && oldAccountId.toHexString() !== (newAccountIdStr ?? "")) {
-    await creditAccount(db, oldAccountId.toHexString(), oldExpense!.amount, oldExpense!._id, expenseDate, "expense_reversal");
-    revalidatePath(`/accounts/${oldAccountId.toHexString()}/history`);
+  // Reverse old account debit if account changed
+  if (oldAccountId && oldAccountId !== (newAccountId ?? "")) {
+    await creditAccount(oldAccountId, oldExpense!.amount, id, expenseDate, "expense_reversal");
+    revalidatePath(`/accounts/${oldAccountId}/history`);
     revalidatePath("/accounts");
   }
 
-  const updateDoc: Record<string, unknown> = {
-    title: title.trim(),
-    amount,
-    description: description?.trim() || "",
-    categoryId: new ObjectId(categoryId),
-    date: expenseDate,
-    dateRangeEnd: dateRangeEndStr ? new Date(dateRangeEndStr) : null,
-  };
+  await prisma.expense.update({
+    where: { id },
+    data: {
+      title: title.trim(),
+      amount,
+      description: description?.trim() ?? "",
+      categoryId,
+      accountId: newAccountId ?? null,
+      date: expenseDate,
+      dateRangeEnd: dateRangeEndStr ? new Date(dateRangeEndStr) : null,
+    },
+  });
 
-  if (newAccountIdStr) {
-    updateDoc.accountId = new ObjectId(newAccountIdStr);
-  } else {
-    updateDoc.accountId = null;
-  }
-
-  await db.collection("expenses").updateOne(
-    { _id: new ObjectId(id) },
-    { $set: updateDoc }
-  );
-
-  if (newAccountIdStr && newAccountIdStr !== oldAccountId?.toHexString()) {
-    await creditAccount(db, newAccountIdStr, amount, new ObjectId(id), expenseDate, "expense");
-    revalidatePath(`/accounts/${newAccountIdStr}/history`);
+  if (newAccountId && newAccountId !== oldAccountId) {
+    await creditAccount(newAccountId, amount, id, expenseDate, "expense");
+    revalidatePath(`/accounts/${newAccountId}/history`);
     revalidatePath("/accounts");
-  } else if (newAccountIdStr && newAccountIdStr === oldAccountId?.toHexString() && amount !== oldExpense?.amount) {
-    // Amount changed on same account — reverse old, apply new
-    await creditAccount(db, newAccountIdStr, oldExpense!.amount, new ObjectId(id), expenseDate, "expense_reversal");
-    await creditAccount(db, newAccountIdStr, amount, new ObjectId(id), expenseDate, "expense");
-    revalidatePath(`/accounts/${newAccountIdStr}/history`);
+  } else if (newAccountId && newAccountId === oldAccountId && amount !== oldExpense?.amount) {
+    await creditAccount(newAccountId, oldExpense!.amount, id, expenseDate, "expense_reversal");
+    await creditAccount(newAccountId, amount, id, expenseDate, "expense");
+    revalidatePath(`/accounts/${newAccountId}/history`);
     revalidatePath("/accounts");
   }
 
@@ -207,17 +164,16 @@ export async function updateExpense(formData: FormData) {
 }
 
 export async function deleteExpense(id: string) {
-  const db = await getDb();
-  const expense = await db.collection<ExpenseDoc>("expenses").findOne({ _id: new ObjectId(id) });
-  const accountId = (expense as (ExpenseDoc & { accountId?: ObjectId }) | null)?.accountId;
+  const expense = await prisma.expense.findUnique({ where: { id } });
+  const accountId = expense?.accountId ?? null;
 
-  if (accountId) {
-    await creditAccount(db, accountId.toHexString(), expense!.amount, expense!._id, expense!.date, "expense_reversal");
-    revalidatePath(`/accounts/${accountId.toHexString()}/history`);
+  if (accountId && expense) {
+    await creditAccount(accountId, expense.amount, id, expense.date, "expense_reversal");
+    revalidatePath(`/accounts/${accountId}/history`);
     revalidatePath("/accounts");
   }
 
-  await db.collection("expenses").deleteOne({ _id: new ObjectId(id) });
+  await prisma.expense.delete({ where: { id } });
 
   revalidatePath("/expenses");
   revalidatePath("/");

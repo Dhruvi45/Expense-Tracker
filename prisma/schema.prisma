@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+model Category {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  color     String
+  createdAt DateTime  @default(now())
+
+  expenses Expense[]
+}
+
+model Expense {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  amount       Float
+  description  String    @default("")
+  categoryId   String    @db.ObjectId
+  accountId    String?   @db.ObjectId
+  date         DateTime
+  dateRangeEnd DateTime?
+  createdAt    DateTime  @default(now())
+
+  category Category        @relation(fields: [categoryId], references: [id])
+  account  Account?        @relation(fields: [accountId], references: [id])
+}
+
+model Account {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  name              String
+  type              String
+  color             String
+  monthlyAllocation Float    @default(0)
+  currentBalance    Float    @default(0)
+  createdAt         DateTime @default(now())
+
+  expenses     Expense[]
+  transactions AccountTransaction[]
+}
+
+model AccountTransaction {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  accountId String   @db.ObjectId
+  type      String
+  amount    Float
+  reason    String
+  note      String   @default("")
+  date      DateTime
+  expenseId String?  @db.ObjectId
+  createdAt DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+}
+
+model IncomeEntry {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  amount    Float
+  month     String
+  source    String   @default("")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model SavingsEntry {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  type      String
+  amount    Float
+  reason    String
+  note      String    @default("")
+  goalId    String?   @db.ObjectId
+  date      DateTime
+  createdAt DateTime  @default(now())
+
+  goal SavingsGoal? @relation(fields: [goalId], references: [id])
+}
+
+model SavingsGoal {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  color         String
+  createdAt     DateTime  @default(now())
+
+  entries SavingsEntry[]
+}
+
+model SavingsConfig {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  monthlyAutoDeposit Float    @default(0)
+  updatedAt          DateTime @updatedAt
+}
+
+model GasCylinder {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  startDate DateTime
+  endDate   DateTime?
+  price     Float
+  createdAt DateTime  @default(now())
+}
+
+model MilkEntry {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  date            DateTime
+  packets         Float
+  volumePerPacket Float
+  pricePerPacket  Float
+  createdAt       DateTime @default(now())
+}
+
+model MilkSettings {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  volumePerPacket Float  @default(0.5)
+  pricePerPacket  Float  @default(0)
+}

@@ -1,39 +1,6 @@
-import { ObjectId } from "mongodb";
-
-// ---- MongoDB Document Types ----
-
-export interface CategoryDoc {
-  _id: ObjectId;
-  name: string;
-  color: string;
-  createdAt: Date;
-}
-
-export interface ExpenseDoc {
-  _id: ObjectId;
-  title: string;
-  amount: number;
-  description: string;
-  categoryId: ObjectId;
-  accountId?: ObjectId;
-  date: Date;
-  dateRangeEnd?: Date;
-  createdAt: Date;
-}
-
 // ---- Account / Budget Bucket types ----
 
 export type AccountType = "dharmik" | "household" | "longterm" | "travel";
-
-export interface AccountDoc {
-  _id: ObjectId;
-  name: string;
-  type: AccountType;
-  color: string;
-  monthlyAllocation: number;
-  currentBalance: number;
-  createdAt: Date;
-}
 
 export interface Account {
   _id: string;
@@ -53,18 +20,6 @@ export type TransactionReason =
   | "pdf_import"
   | "expense_reversal";
 
-export interface AccountTransactionDoc {
-  _id: ObjectId;
-  accountId: ObjectId;
-  type: "credit" | "debit";
-  amount: number;
-  reason: TransactionReason;
-  note: string;
-  date: Date;
-  expenseId?: ObjectId;
-  createdAt: Date;
-}
-
 export interface AccountTransaction {
   _id: string;
   accountId: string;
@@ -78,15 +33,6 @@ export interface AccountTransaction {
 }
 
 // ---- Income types ----
-
-export interface IncomeEntryDoc {
-  _id: ObjectId;
-  amount: number;
-  month: string; // YYYY-MM
-  source: string;
-  note: string;
-  createdAt: Date;
-}
 
 export interface IncomeEntry {
   _id: string;
@@ -105,17 +51,6 @@ export type SavingsReason =
   | "income_split"
   | "goal_withdrawal";
 
-export interface SavingsEntryDoc {
-  _id: ObjectId;
-  type: "deposit" | "withdrawal";
-  amount: number;
-  reason: SavingsReason;
-  note: string;
-  goalId?: ObjectId;
-  date: Date;
-  createdAt: Date;
-}
-
 export interface SavingsEntry {
   _id: string;
   type: "deposit" | "withdrawal";
@@ -128,16 +63,6 @@ export interface SavingsEntry {
   createdAt: string;
 }
 
-export interface SavingsGoalDoc {
-  _id: ObjectId;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline?: Date;
-  color: string;
-  createdAt: Date;
-}
-
 export interface SavingsGoal {
   _id: string;
   name: string;
@@ -146,11 +71,6 @@ export interface SavingsGoal {
   deadline?: string;
   color: string;
   createdAt: string;
-}
-
-export interface SavingsConfigDoc {
-  monthlyAutoDeposit: number;
-  updatedAt: Date;
 }
 
 export interface SavingsConfig {
@@ -220,14 +140,6 @@ export interface CategoryMonthComparison {
 
 // ---- Gas Cylinder types ----
 
-export interface GasCylinderDoc {
-  _id: ObjectId;
-  startDate: Date;
-  endDate: Date | null;
-  price: number;
-  createdAt: Date;
-}
-
 export interface GasCylinder {
   _id: string;
   startDate: string;
@@ -239,15 +151,6 @@ export interface GasCylinder {
 }
 
 // ---- Milk Management types ----
-
-export interface MilkEntryDoc {
-  _id: ObjectId;
-  date: Date;
-  packets: number;          // number of packets received
-  volumePerPacket: number;  // liters per packet (snapshot from settings at entry time)
-  pricePerPacket: number;   // price per packet (snapshot from settings at entry time)
-  createdAt: Date;
-}
 
 export interface MilkEntry {
   _id: string;

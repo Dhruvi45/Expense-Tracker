@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic";
 
 import { getAccountsWithMonthlySpend } from "./actions";
 import { AccountCard } from "@/components/account-card";

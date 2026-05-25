@@ -1,14 +1,18 @@
 "use server";
 
-import { ObjectId } from "mongodb";
-import { getDb } from "@/lib/mongodb";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import type { GasCylinder, GasCylinderDoc } from "@/lib/types";
+import type { GasCylinder } from "@/lib/types";
 
-function computeCylinder(doc: GasCylinderDoc): GasCylinder {
-  const start = new Date(doc.startDate);
-  const end = doc.endDate ? new Date(doc.endDate) : null;
-
+function computeCylinder(doc: {
+  id: string;
+  startDate: Date;
+  endDate: Date | null;
+  price: number;
+  createdAt: Date;
+}): GasCylinder {
+  const start = doc.startDate;
+  const end = doc.endDate;
   let daysUsed: number | null = null;
   let costPerDay: number | null = null;
 
@@ -18,7 +22,7 @@ function computeCylinder(doc: GasCylinderDoc): GasCylinder {
   }
 
   return {
-    _id: doc._id.toHexString(),
+    _id: doc.id,
     startDate: start.toISOString(),
     endDate: end ? end.toISOString() : null,
     price: doc.price,
@@ -29,13 +33,7 @@ function computeCylinder(doc: GasCylinderDoc): GasCylinder {
 }
 
 export async function getGasCylinders(): Promise<GasCylinder[]> {
-  const db = await getDb();
-  const docs = await db
-    .collection<GasCylinderDoc>("gasCylinders")
-    .find()
-    .sort({ startDate: -1 })
-    .toArray();
-
+  const docs = await prisma.gasCylinder.findMany({ orderBy: { startDate: "desc" } });
   return docs.map(computeCylinder);
 }
 
@@ -48,12 +46,12 @@ export async function addGasCylinder(formData: FormData) {
     return { error: "Start date and price are required" };
   }
 
-  const db = await getDb();
-  await db.collection("gasCylinders").insertOne({
-    startDate: new Date(startDate),
-    endDate: endDate ? new Date(endDate) : null,
-    price,
-    createdAt: new Date(),
+  await prisma.gasCylinder.create({
+    data: {
+      startDate: new Date(startDate),
+      endDate: endDate ? new Date(endDate) : null,
+      price,
+    },
   });
 
   revalidatePath("/gas-cylinder");
@@ -70,25 +68,21 @@ export async function updateGasCylinder(formData: FormData) {
     return { error: "ID, start date and price are required" };
   }
 
-  const db = await getDb();
-  await db.collection("gasCylinders").updateOne(
-    { _id: new ObjectId(id) },
-    {
-      $set: {
-        startDate: new Date(startDate),
-        endDate: endDate ? new Date(endDate) : null,
-        price,
-      },
-    }
-  );
+  await prisma.gasCylinder.update({
+    where: { id },
+    data: {
+      startDate: new Date(startDate),
+      endDate: endDate ? new Date(endDate) : null,
+      price,
+    },
+  });
 
   revalidatePath("/gas-cylinder");
   return { success: true };
 }
 
 export async function deleteGasCylinder(id: string) {
-  const db = await getDb();
-  await db.collection("gasCylinders").deleteOne({ _id: new ObjectId(id) });
+  await prisma.gasCylinder.delete({ where: { id } });
   revalidatePath("/gas-cylinder");
   return { success: true };
 }

@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic";
 
 import { getExpenses, deleteExpense } from "./expenses/actions";
 import { getCategories } from "@/app/categories/actions";

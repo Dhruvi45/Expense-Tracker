@@ -1,9 +1,7 @@
 "use server";
 
-import { ObjectId } from "mongodb";
-import { getDb } from "@/lib/mongodb";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import type { AccountTransactionDoc } from "@/lib/types";
 
 export interface BulkExpenseItem {
   title: string;
@@ -17,50 +15,55 @@ export interface BulkExpenseItem {
 export async function bulkAddExpenses(items: BulkExpenseItem[]) {
   if (!items.length) return { error: "No items to import" };
 
-  const db = await getDb();
   const now = new Date();
 
-  const docs = items.map((item) => ({
-    title: item.title.trim(),
-    amount: item.amount,
-    description: item.description?.trim() || "PDF Import",
-    categoryId: new ObjectId(item.categoryId),
-    accountId: item.accountId ? new ObjectId(item.accountId) : undefined,
-    date: new Date(item.date),
-    createdAt: now,
-  }));
+  // Insert all expenses and get their IDs back
+  const created = await prisma.$transaction(
+    items.map((item) =>
+      prisma.expense.create({
+        data: {
+          title: item.title.trim(),
+          amount: item.amount,
+          description: item.description?.trim() || "PDF Import",
+          categoryId: item.categoryId,
+          ...(item.accountId ? { accountId: item.accountId } : {}),
+          date: new Date(item.date),
+          createdAt: now,
+        },
+        select: { id: true, accountId: true, amount: true, date: true },
+      })
+    )
+  );
 
-  const result = await db.collection("expenses").insertMany(docs);
+  // Group by account for batch balance updates
+  const accountDebits = new Map<string, { total: number; expenses: typeof created }>();
+  for (const expense of created) {
+    if (!expense.accountId) continue;
+    const existing = accountDebits.get(expense.accountId) ?? { total: 0, expenses: [] };
+    existing.total += expense.amount;
+    existing.expenses.push(expense);
+    accountDebits.set(expense.accountId, existing);
+  }
 
-  // Debit account balances for items with an account
-  const accountDebits = new Map<string, { total: number; expenseIds: ObjectId[] }>();
-  items.forEach((item, i) => {
-    if (item.accountId) {
-      const existing = accountDebits.get(item.accountId) ?? { total: 0, expenseIds: [] };
-      existing.total += item.amount;
-      existing.expenseIds.push(result.insertedIds[i]);
-      accountDebits.set(item.accountId, existing);
-    }
-  });
+  for (const [accountId, { total, expenses }] of accountDebits) {
+    await prisma.account.update({
+      where: { id: accountId },
+      data: { currentBalance: { increment: -total } },
+    });
 
-  for (const [accountId, { total, expenseIds }] of accountDebits) {
-    await db.collection("accounts").updateOne(
-      { _id: new ObjectId(accountId) },
-      { $inc: { currentBalance: -total } }
-    );
+    await prisma.accountTransaction.createMany({
+      data: expenses.map((e) => ({
+        accountId,
+        type: "debit" as const,
+        amount: e.amount,
+        reason: "pdf_import",
+        note: "Imported from PDF statement",
+        date: e.date,
+        expenseId: e.id,
+        createdAt: now,
+      })),
+    });
 
-    const txDocs: Omit<AccountTransactionDoc, "_id">[] = expenseIds.map((expId, idx) => ({
-      accountId: new ObjectId(accountId),
-      type: "debit" as const,
-      amount: items.find((_, i) => result.insertedIds[i]?.equals(expId))?.amount ?? 0,
-      reason: "pdf_import" as const,
-      note: "Imported from PDF statement",
-      date: new Date(items[idx]?.date ?? now),
-      expenseId: expId,
-      createdAt: now,
-    } as AccountTransactionDoc));
-
-    await db.collection("accountTransactions").insertMany(txDocs);
     revalidatePath(`/accounts/${accountId}/history`);
     revalidatePath("/accounts");
   }

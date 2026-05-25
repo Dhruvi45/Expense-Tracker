@@ -1,20 +1,13 @@
 "use server";
 
-import { ObjectId } from "mongodb";
-import { getDb } from "@/lib/mongodb";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import type { Category, CategoryDoc } from "@/lib/types";
+import type { Category } from "@/lib/types";
 
 export async function getCategories(): Promise<Category[]> {
-  const db = await getDb();
-  const docs = await db
-    .collection<CategoryDoc>("categories")
-    .find()
-    .sort({ name: 1 })
-    .toArray();
-
+  const docs = await prisma.category.findMany({ orderBy: { name: "asc" } });
   return docs.map((doc) => ({
-    _id: doc._id.toHexString(),
+    _id: doc.id,
     name: doc.name,
     color: doc.color,
     createdAt: doc.createdAt.toISOString(),
@@ -25,16 +18,9 @@ export async function addCategory(formData: FormData) {
   const name = formData.get("name") as string;
   const color = formData.get("color") as string;
 
-  if (!name || !color) {
-    return { error: "Name and color are required" };
-  }
+  if (!name || !color) return { error: "Name and color are required" };
 
-  const db = await getDb();
-  await db.collection("categories").insertOne({
-    name: name.trim(),
-    color,
-    createdAt: new Date(),
-  });
+  await prisma.category.create({ data: { name: name.trim(), color } });
 
   revalidatePath("/categories");
   revalidatePath("/expenses");
@@ -47,15 +33,9 @@ export async function updateCategory(formData: FormData) {
   const name = formData.get("name") as string;
   const color = formData.get("color") as string;
 
-  if (!id || !name || !color) {
-    return { error: "ID, name and color are required" };
-  }
+  if (!id || !name || !color) return { error: "ID, name and color are required" };
 
-  const db = await getDb();
-  await db.collection("categories").updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { name: name.trim(), color } }
-  );
+  await prisma.category.update({ where: { id }, data: { name: name.trim(), color } });
 
   revalidatePath("/categories");
   revalidatePath("/expenses");
@@ -64,12 +44,7 @@ export async function updateCategory(formData: FormData) {
 }
 
 export async function deleteCategory(id: string) {
-  const db = await getDb();
-
-  // Check if any expenses use this category
-  const expenseCount = await db
-    .collection("expenses")
-    .countDocuments({ categoryId: new ObjectId(id) });
+  const expenseCount = await prisma.expense.count({ where: { categoryId: id } });
 
   if (expenseCount > 0) {
     return {
@@ -77,7 +52,7 @@ export async function deleteCategory(id: string) {
     };
   }
 
-  await db.collection("categories").deleteOne({ _id: new ObjectId(id) });
+  await prisma.category.delete({ where: { id } });
 
   revalidatePath("/categories");
   revalidatePath("/");
