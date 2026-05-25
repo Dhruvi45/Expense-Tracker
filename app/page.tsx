@@ -57,42 +57,47 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expenses.map((expense) => (
-                  <TableRow key={expense._id}>
-                    <TableCell className="whitespace-nowrap">
-                      {new Date(expense.date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{expense.title}</p>
-                        {expense.description && (
-                          <p className="text-xs text-muted-foreground">
-                            {expense.description}
-                          </p>
-                        )}
+        <>
+          {/* Mobile key-value list */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {expenses.map((expense) => (
+              <Card key={expense._id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{expense.title}</p>
+                      {expense.description && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {expense.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="text-base font-semibold">
+                        ₹{expense.amount.toFixed(2)}
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        <ExpenseForm categories={categories} expense={expense} />
+                        <DeleteExpenseButton id={expense._id} />
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Date</p>
+                      <p className="font-medium">
+                        {new Date(expense.date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Category</p>
                       <Badge
                         variant="outline"
-                        className="gap-1.5"
+                        className="mt-0.5 gap-1.5"
                         style={{ borderColor: expense.categoryColor }}
                       >
                         <span
@@ -101,25 +106,78 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         />
                         {expense.categoryName}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      ₹{expense.amount.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <ExpenseForm
-                          categories={categories}
-                          expense={expense}
-                        />
-                        <DeleteExpenseButton id={expense._id} />
-                      </div>
-                    </TableCell>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <Card className="hidden md:block">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {expenses.map((expense) => (
+                    <TableRow key={expense._id}>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(expense.date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{expense.title}</p>
+                          {expense.description && (
+                            <p className="text-xs text-muted-foreground">
+                              {expense.description}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className="gap-1.5"
+                          style={{ borderColor: expense.categoryColor }}
+                        >
+                          <span
+                            className="inline-block h-2 w-2 rounded-full"
+                            style={{ backgroundColor: expense.categoryColor }}
+                          />
+                          {expense.categoryName}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ₹{expense.amount.toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <ExpenseForm
+                            categories={categories}
+                            expense={expense}
+                          />
+                          <DeleteExpenseButton id={expense._id} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

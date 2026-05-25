@@ -119,7 +119,7 @@ export default async function GasCylinderPage() {
       {/* Comparison Chart */}
       {completed.length > 0 && <GasCylinderChart cylinders={completed} />}
 
-      {/* Table */}
+      {/* List */}
       {cylinders.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -129,65 +129,126 @@ export default async function GasCylinderPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>End Date</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Days Used</TableHead>
-                  <TableHead className="text-right">Cost/Day</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cylinders.map((cyl) => (
-                  <TableRow key={cyl._id}>
-                    <TableCell>
-                      {new Date(cyl.startDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      {cyl.endDate ? (
-                        new Date(cyl.endDate).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                      ) : (
-                        <Badge variant="outline" className="text-green-600 border-green-300">
+        <>
+          {/* Mobile key-value cards */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {cylinders.map((cyl) => (
+              <Card key={cyl._id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-base">₹{cyl.price.toFixed(2)}</p>
+                      {cyl.endDate ? null : (
+                        <Badge variant="outline" className="mt-1 text-green-600 border-green-300">
                           In Use
                         </Badge>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      ₹{cyl.price.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {cyl.daysUsed ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {cyl.costPerDay !== null
-                        ? `₹${cyl.costPerDay.toFixed(2)}`
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <GasCylinderForm cylinder={cyl} />
-                        <DeleteCylinderButton id={cyl._id} />
-                      </div>
-                    </TableCell>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      <GasCylinderForm cylinder={cyl} />
+                      <DeleteCylinderButton id={cyl._id} />
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Start Date</p>
+                      <p className="font-medium">
+                        {new Date(cyl.startDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">End Date</p>
+                      <p className="font-medium">
+                        {cyl.endDate
+                          ? new Date(cyl.endDate).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Days Used</p>
+                      <p className="font-medium">{cyl.daysUsed ?? "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Cost / Day</p>
+                      <p className="font-medium">
+                        {cyl.costPerDay !== null ? `₹${cyl.costPerDay.toFixed(2)}` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <Card className="hidden md:block">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Days Used</TableHead>
+                    <TableHead className="text-right">Cost/Day</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {cylinders.map((cyl) => (
+                    <TableRow key={cyl._id}>
+                      <TableCell>
+                        {new Date(cyl.startDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        {cyl.endDate ? (
+                          new Date(cyl.endDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        ) : (
+                          <Badge variant="outline" className="text-green-600 border-green-300">
+                            In Use
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ₹{cyl.price.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {cyl.daysUsed ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {cyl.costPerDay !== null
+                          ? `₹${cyl.costPerDay.toFixed(2)}`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <GasCylinderForm cylinder={cyl} />
+                          <DeleteCylinderButton id={cyl._id} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

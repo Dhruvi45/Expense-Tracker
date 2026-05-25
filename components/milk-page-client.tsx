@@ -261,13 +261,42 @@ export function MilkPageClient({
         </Card>
       </div>
 
-      {/* Monthly Summary Table */}
+      {/* Monthly Summary */}
       {monthlySummaries.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Monthly Summary</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
+
+          {/* Mobile key-value cards */}
+          <CardContent className="flex flex-col gap-3 md:hidden">
+            {monthlySummaries.map((s) => (
+              <div key={s.month} className="rounded-lg border border-border p-3">
+                <p className="mb-2 font-semibold">{s.label}</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Packets</p>
+                    <p className="font-medium">{s.totalPackets}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Liters</p>
+                    <p className="font-medium">{s.totalLiters} L</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Cost</p>
+                    <p className="font-medium">₹{s.totalCost.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Deliveries</p>
+                    <p className="font-medium">{s.entries}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+
+          {/* Desktop table */}
+          <CardContent className="hidden p-0 md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -318,50 +347,94 @@ function MilkListView({ entries }: { entries: MilkEntry[] }) {
   }
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Packets</TableHead>
-              <TableHead className="text-right">Liters</TableHead>
-              <TableHead className="text-right">Price/Packet</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="w-24">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entries.map((entry) => (
-              <TableRow key={entry._id}>
-                <TableCell>
-                  {new Date(entry.date).toLocaleDateString("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </TableCell>
-                <TableCell className="text-right">{entry.packets}</TableCell>
-                <TableCell className="text-right">{entry.liters} L</TableCell>
-                <TableCell className="text-right">
-                  ₹{entry.pricePerPacket.toFixed(2)}
-                </TableCell>
-                <TableCell className="text-right font-medium">
-                  ₹{entry.total.toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <MilkEntryForm entry={entry} />
-                    <DeleteMilkButton id={entry._id} />
-                  </div>
-                </TableCell>
+    <>
+      {/* Mobile key-value cards */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {entries.map((entry) => (
+          <Card key={entry._id}>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-medium">
+                    {new Date(entry.date).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-base font-semibold">₹{entry.total.toFixed(2)}</p>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <MilkEntryForm entry={entry} />
+                  <DeleteMilkButton id={entry._id} />
+                </div>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-x-4 gap-y-1.5 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Packets</p>
+                  <p className="font-medium">{entry.packets}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Liters</p>
+                  <p className="font-medium">{entry.liters} L</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Price/Packet</p>
+                  <p className="font-medium">₹{entry.pricePerPacket.toFixed(2)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <Card className="hidden md:block">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Packets</TableHead>
+                <TableHead className="text-right">Liters</TableHead>
+                <TableHead className="text-right">Price/Packet</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="w-24">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => (
+                <TableRow key={entry._id}>
+                  <TableCell>
+                    {new Date(entry.date).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </TableCell>
+                  <TableCell className="text-right">{entry.packets}</TableCell>
+                  <TableCell className="text-right">{entry.liters} L</TableCell>
+                  <TableCell className="text-right">
+                    ₹{entry.pricePerPacket.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    ₹{entry.total.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <MilkEntryForm entry={entry} />
+                      <DeleteMilkButton id={entry._id} />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </>
   );
 }
 

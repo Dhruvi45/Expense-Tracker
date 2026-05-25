@@ -43,14 +43,14 @@ export function ExpenseFilters({ categories }: ExpenseFiltersProps) {
   const hasFilters = category || startDate || endDate;
 
   return (
-    <div className="flex flex-wrap items-end gap-4">
-      <div className="space-y-1">
+    <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end sm:gap-4">
+      <div className="col-span-2 space-y-1 sm:col-span-1">
         <Label className="text-xs text-muted-foreground">Category</Label>
         <Select
           value={category}
           onValueChange={(val) => updateFilter("category", val === "all" || !val ? "" : val)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
@@ -76,7 +76,7 @@ export function ExpenseFilters({ categories }: ExpenseFiltersProps) {
           type="date"
           value={startDate}
           onChange={(e) => updateFilter("startDate", e.target.value)}
-          className="w-[160px]"
+          className="w-full sm:w-[160px]"
         />
       </div>
 
@@ -86,15 +86,17 @@ export function ExpenseFilters({ categories }: ExpenseFiltersProps) {
           type="date"
           value={endDate}
           onChange={(e) => updateFilter("endDate", e.target.value)}
-          className="w-[160px]"
+          className="w-full sm:w-[160px]"
         />
       </div>
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearFilters}>
-          <X className="mr-1 h-3 w-3" />
-          Clear
-        </Button>
+        <div className="flex items-end">
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <X className="mr-1 h-3 w-3" />
+            Clear
+          </Button>
+        </div>
       )}
     </div>
   );
