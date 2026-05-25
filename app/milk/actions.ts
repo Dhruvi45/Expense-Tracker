@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import type { MilkEntry, MilkMonthlySummary, MilkSettings } from "@/lib/types";
 
@@ -25,7 +26,7 @@ function toMilkEntry(doc: {
 }
 
 export async function getMilkEntries(month?: string): Promise<MilkEntry[]> {
-  const where: Parameters<typeof prisma.milkEntry.findMany>[0]["where"] = {};
+  const where: Prisma.MilkEntryWhereInput = {};
   if (month) {
     const [year, m] = month.split("-").map(Number);
     where.date = { gte: new Date(year, m - 1, 1), lte: new Date(year, m, 0, 23, 59, 59, 999) };

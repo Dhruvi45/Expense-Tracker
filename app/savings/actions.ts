@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import type { SavingsEntry, SavingsGoal, SavingsConfig, SavingsSummary } from "@/lib/types";
 
@@ -60,7 +61,7 @@ export async function getSavingsSummary(): Promise<SavingsSummary> {
 // ---- Entries ----
 
 export async function getSavingsEntries(month?: string): Promise<SavingsEntry[]> {
-  const where: Parameters<typeof prisma.savingsEntry.findMany>[0]["where"] = {};
+  const where: Prisma.SavingsEntryWhereInput = {};
   if (month) {
     const [year, mon] = month.split("-").map(Number);
     where.date = { gte: new Date(year, mon - 1, 1), lt: new Date(year, mon, 1) };
