@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import type { Account, AccountTransaction } from "@/lib/types";
 
@@ -93,7 +94,7 @@ export async function getAccountTransactions(
   accountId: string,
   month?: string
 ): Promise<AccountTransaction[]> {
-  const where: Parameters<typeof prisma.accountTransaction.findMany>[0]["where"] = { accountId };
+  const where: Prisma.AccountTransactionWhereInput = { accountId };
 
   if (month) {
     const [year, mon] = month.split("-").map(Number);
