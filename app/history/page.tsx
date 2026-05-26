@@ -1,10 +1,9 @@
-
-import { getExpenses, deleteExpense } from "./actions";
+import { getExpenses, deleteExpense } from "@/app/expenses/actions";
 import { getCategories } from "@/app/categories/actions";
 import { getAccounts } from "@/app/accounts/actions";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpenseFilters } from "@/components/expense-filters";
-import { QuickAddExpense } from "@/components/quick-add-expense";
+import { StatementUpload } from "@/components/statement-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -18,7 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Trash2 } from "lucide-react";
 
-interface ExpensesPageProps {
+interface HistoryPageProps {
   searchParams: Promise<{
     category?: string;
     startDate?: string;
@@ -26,7 +25,7 @@ interface ExpensesPageProps {
   }>;
 }
 
-export default async function ExpensesPage({ searchParams }: ExpensesPageProps) {
+export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const params = await searchParams;
   const [expenses, categories, accounts] = await Promise.all([
     getExpenses(params.category, params.startDate, params.endDate),
@@ -38,15 +37,18 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Expenses</h1>
-        <p className="text-muted-foreground">
-          {expenses.length} expense{expenses.length !== 1 ? "s" : ""} &middot; Total: ₹{total.toFixed(2)}
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">History</h1>
+          <p className="text-muted-foreground">
+            {expenses.length} expense{expenses.length !== 1 ? "s" : ""} &middot; Total: ₹{total.toFixed(2)}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <StatementUpload categories={categories} accounts={accounts} />
+          <ExpenseForm categories={categories} accounts={accounts} />
+        </div>
       </div>
-
-      {/* Quick add — always visible at the top */}
-      <QuickAddExpense categories={categories} accounts={accounts} />
 
       <ExpenseFilters categories={categories} />
 
@@ -108,6 +110,9 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                       </div>
                     </div>
                   </div>
+                  {expense.accountName && (
+                    <p className="mt-1 text-xs text-muted-foreground">{expense.accountName}</p>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -122,6 +127,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                     <TableHead>Date</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Account</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
@@ -163,6 +169,9 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                           />
                           {expense.categoryName}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {expense.accountName ?? "—"}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         ₹{expense.amount.toFixed(2)}

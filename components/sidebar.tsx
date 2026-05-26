@@ -13,13 +13,15 @@ import {
   Wallet,
   PiggyBank,
   TrendingUp,
+  History,
   MoreHorizontal,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const allNavItems = [
-  { href: "/", label: "Expenses", icon: Receipt },
+  { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/history", label: "History", icon: History },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/accounts", label: "Accounts", icon: Wallet },
   { href: "/savings", label: "Savings", icon: PiggyBank },
@@ -38,8 +40,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   const anySecondaryActive = secondaryNav.some((item) => isActive(item.href));
 
