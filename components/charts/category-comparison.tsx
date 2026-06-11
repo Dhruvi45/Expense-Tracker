@@ -42,8 +42,9 @@ export function CategoryComparison({ data, categories }: CategoryComparisonProps
               <Tooltip
                 formatter={(value) => [`₹${Number(value).toFixed(2)}`]}
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  color: "var(--card-foreground)",
+                  border: "1px solid var(--border)",
                   borderRadius: "8px",
                 }}
               />

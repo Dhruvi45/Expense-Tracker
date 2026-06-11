@@ -40,17 +40,18 @@ export function TrendLineChart({ data }: TrendLineChartProps) {
               <Tooltip
                 formatter={(value) => [`₹${Number(value).toFixed(2)}`, "Total"]}
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  color: "var(--card-foreground)",
+                  border: "1px solid var(--border)",
                   borderRadius: "8px",
                 }}
               />
               <Line
                 type="monotone"
                 dataKey="total"
-                stroke="hsl(var(--chart-2))"
+                stroke="var(--chart-2)"
                 strokeWidth={2}
-                dot={{ fill: "hsl(var(--chart-2))", r: 4 }}
+                dot={{ fill: "var(--chart-2)", r: 4 }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>

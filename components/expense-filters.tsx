@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ interface ExpenseFiltersProps {
 
 export function ExpenseFilters({ categories }: ExpenseFiltersProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const category = searchParams.get("category") || "";
@@ -33,11 +34,11 @@ export function ExpenseFilters({ categories }: ExpenseFiltersProps) {
     } else {
       params.delete(key);
     }
-    router.push(`/expenses?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   }
 
   function clearFilters() {
-    router.push("/expenses");
+    router.push(pathname);
   }
 
   const hasFilters = category || startDate || endDate;

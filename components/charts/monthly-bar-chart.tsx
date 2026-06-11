@@ -40,12 +40,13 @@ export function MonthlyBarChart({ data }: MonthlyBarChartProps) {
               <Tooltip
                 formatter={(value) => [`₹${Number(value).toFixed(2)}`, "Total"]}
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  color: "var(--card-foreground)",
+                  border: "1px solid var(--border)",
                   borderRadius: "8px",
                 }}
               />
-              <Bar dataKey="total" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="total" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}

@@ -1,5 +1,5 @@
 // ⚠️  Bump this version string on every deployment so the old cache is wiped.
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 const CACHE_NAME = `expense-tracker-${CACHE_VERSION}`;
 
 // Only pre-cache the offline fallback page — NOT real routes.

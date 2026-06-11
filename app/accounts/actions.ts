@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { runMonthStartAllocation } from "@/lib/month-start";
 import type { Account, AccountTransaction } from "@/lib/types";
 
 const DEFAULT_ACCOUNTS = [
@@ -117,6 +118,18 @@ export async function getAccountTransactions(
     expenseId: doc.expenseId ?? undefined,
     createdAt: doc.createdAt.toISOString(),
   }));
+}
+
+export async function runMonthStart() {
+  try {
+    await runMonthStartAllocation();
+  } catch {
+    return { error: "Failed to run allocation" };
+  }
+  revalidatePath("/accounts");
+  revalidatePath("/dashboard");
+  revalidatePath("/savings");
+  return { success: true };
 }
 
 export async function getAccountsWithMonthlySpend(): Promise<

@@ -3,8 +3,12 @@ import { getAccountsWithMonthlySpend } from "@/app/accounts/actions";
 import { getSavingsSummary } from "@/app/savings/actions";
 import { getIncomeMonthlySummaries } from "@/app/income/actions";
 import { prisma } from "@/lib/prisma";
+import {
+  getMonthlyTrends,
+  getCategoryBreakdown,
+  getTopCategories,
+} from "@/lib/reports";
 import { DashboardContent } from "@/components/dashboard-content";
-import type { MonthlyTrend, CategoryBreakdown } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Wallet,
@@ -25,82 +29,6 @@ async function getThisMonthExpenses(): Promise<number> {
     _sum: { amount: true },
   });
   return result._sum.amount ?? 0;
-}
-
-async function getMonthlyTrends(): Promise<MonthlyTrend[]> {
-  const now = new Date();
-  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-  const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-  const expenses = await prisma.expense.findMany({
-    where: { date: { gte: twelveMonthsAgo } },
-    select: { date: true, amount: true },
-  });
-
-  const grouped = new Map<string, number>();
-  for (const e of expenses) {
-    const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, "0")}`;
-    grouped.set(key, (grouped.get(key) ?? 0) + e.amount);
-  }
-
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    return { month: key, label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`, total: grouped.get(key) ?? 0 };
-  });
-}
-
-async function getCategoryBreakdown(): Promise<CategoryBreakdown[]> {
-  const expenses = await prisma.expense.findMany({
-    select: { categoryId: true, amount: true },
-  });
-
-  const catAmounts = new Map<string, number>();
-  for (const e of expenses) {
-    catAmounts.set(e.categoryId, (catAmounts.get(e.categoryId) ?? 0) + e.amount);
-  }
-
-  const categoryIds = Array.from(catAmounts.keys());
-  const categories = await prisma.category.findMany({
-    where: { id: { in: categoryIds } },
-    select: { id: true, name: true, color: true },
-  });
-  const catMap = new Map(categories.map((c) => [c.id, c]));
-
-  return Array.from(catAmounts.entries())
-    .map(([catId, total]) => ({
-      categoryId: catId,
-      name: catMap.get(catId)?.name ?? "Uncategorized",
-      color: catMap.get(catId)?.color ?? "#64748b",
-      total,
-    }))
-    .sort((a, b) => b.total - a.total);
-}
-
-async function getTopCategories(): Promise<{ name: string; color: string; total: number }[]> {
-  const now = new Date();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const grouped = await prisma.expense.groupBy({
-    by: ["categoryId"],
-    where: { date: { gte: thisMonthStart } },
-    _sum: { amount: true },
-    orderBy: { _sum: { amount: "desc" } },
-    take: 5,
-  });
-
-  const categoryIds = grouped.map((g) => g.categoryId);
-  const categories = await prisma.category.findMany({
-    where: { id: { in: categoryIds } },
-    select: { id: true, name: true, color: true },
-  });
-  const catMap = new Map(categories.map((c) => [c.id, c]));
-
-  return grouped.map((g) => ({
-    name: catMap.get(g.categoryId)?.name ?? "Uncategorized",
-    color: catMap.get(g.categoryId)?.color ?? "#64748b",
-    total: g._sum.amount ?? 0,
-  }));
 }
 
 export default async function DashboardPage() {
@@ -164,7 +92,7 @@ export default async function DashboardPage() {
             <p className="text-2xl font-bold text-destructive">
               ₹{thisMonthExpenses.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </p>
-            <Link href="/" className="text-xs text-muted-foreground hover:underline">
+            <Link href="/expenses" className="text-xs text-muted-foreground hover:underline">
               View expenses →
             </Link>
           </CardContent>

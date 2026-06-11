@@ -29,10 +29,19 @@ async function creditAccount(
   });
 }
 
+/** Revalidate every page that displays expense-derived data. */
+function revalidateExpensePages() {
+  revalidatePath("/expenses");
+  revalidatePath("/history");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+}
+
 export async function getExpenses(
   categoryId?: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  limit?: number
 ): Promise<Expense[]> {
   const docs = await prisma.expense.findMany({
     where: {
@@ -51,6 +60,7 @@ export async function getExpenses(
       account: { select: { name: true } },
     },
     orderBy: { date: "desc" },
+    ...(limit ? { take: limit } : {}),
   });
 
   return docs.map((doc) => ({
@@ -102,9 +112,7 @@ export async function addExpense(formData: FormData) {
     revalidatePath("/accounts");
   }
 
-  revalidatePath("/expenses");
-  revalidatePath("/");
-  revalidatePath("/reports");
+  revalidateExpensePages();
   return { success: true };
 }
 
@@ -157,9 +165,7 @@ export async function updateExpense(formData: FormData) {
     revalidatePath("/accounts");
   }
 
-  revalidatePath("/expenses");
-  revalidatePath("/");
-  revalidatePath("/reports");
+  revalidateExpensePages();
   return { success: true };
 }
 
@@ -175,8 +181,6 @@ export async function deleteExpense(id: string) {
 
   await prisma.expense.delete({ where: { id } });
 
-  revalidatePath("/expenses");
-  revalidatePath("/");
-  revalidatePath("/reports");
+  revalidateExpensePages();
   return { success: true };
 }

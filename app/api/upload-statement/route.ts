@@ -9,12 +9,6 @@ interface ParsedTransaction {
   type: "debit" | "credit";
 }
 
-// Common Indian bank statement date patterns: DD/MM/YYYY, DD-MM-YYYY, DD MMM YYYY
-const DATE_PATTERNS = [
-  /\b(\d{2})[\/\-](\d{2})[\/\-](\d{4})\b/,
-  /\b(\d{2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})\b/i,
-];
-
 const MONTH_MAP: Record<string, number> = {
   jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,

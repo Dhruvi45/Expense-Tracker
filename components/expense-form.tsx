@@ -26,6 +26,9 @@ interface ExpenseFormProps {
   categories: Category[];
   accounts?: Account[];
   expense?: Expense;
+  /** Controlled mode: when provided, the dialog renders without its own trigger. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function daysBetween(start: string, end: string): number {
@@ -34,8 +37,15 @@ function daysBetween(start: string, end: string): number {
   return Math.max(1, Math.round(diff / 86400000) + 1);
 }
 
-export function ExpenseForm({ categories, accounts = [], expense }: ExpenseFormProps) {
+export function ExpenseForm({
+  categories,
+  accounts = [],
+  expense,
+  open: controlledOpen,
+  onOpenChange,
+}: ExpenseFormProps) {
   const isEdit = !!expense;
+  const isControlled = controlledOpen !== undefined;
 
   // Default account: use existing expense accountId on edit, or find "household" type on new
   const defaultAccountId = useMemo(() => {
@@ -43,7 +53,12 @@ export function ExpenseForm({ categories, accounts = [], expense }: ExpenseFormP
     return accounts.find((a) => a.type === "household")?._id ?? "";
   }, [expense?.accountId, accounts]);
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) onOpenChange?.(v);
+    else setInternalOpen(v);
+  };
   const [title, setTitle] = useState(expense?.title ?? "");
   const [amount, setAmount] = useState(expense?.amount?.toString() ?? "");
   const [description, setDescription] = useState(expense?.description ?? "");
@@ -116,16 +131,17 @@ export function ExpenseForm({ categories, accounts = [], expense }: ExpenseFormP
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      {isEdit ? (
-        <DialogTrigger render={<Button variant="ghost" size="icon" />}>
-          <Pencil className="h-4 w-4" />
-        </DialogTrigger>
-      ) : (
-        <DialogTrigger render={<Button />}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Expense
-        </DialogTrigger>
-      )}
+      {!isControlled &&
+        (isEdit ? (
+          <DialogTrigger render={<Button variant="ghost" size="icon" />}>
+            <Pencil className="h-4 w-4" />
+          </DialogTrigger>
+        ) : (
+          <DialogTrigger render={<Button />}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Expense
+          </DialogTrigger>
+        ))}
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Expense" : "Add Expense"}</DialogTitle>
@@ -234,7 +250,7 @@ export function ExpenseForm({ categories, accounts = [], expense }: ExpenseFormP
               </div>
               {accountId && (
                 <p className="text-xs text-muted-foreground">
-                  Amount will be debited from this account's balance.
+                  Amount will be debited from this account&apos;s balance.
                 </p>
               )}
             </div>

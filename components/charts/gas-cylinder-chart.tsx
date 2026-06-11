@@ -50,14 +50,15 @@ export function GasCylinderChart({ cylinders }: GasCylinderChartProps) {
               <Tooltip
                 formatter={(value) => [`${value} days`, "Duration"]}
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  color: "var(--card-foreground)",
+                  border: "1px solid var(--border)",
                   borderRadius: "8px",
                 }}
               />
               <Bar
                 dataKey="daysUsed"
-                fill="hsl(var(--chart-1))"
+                fill="var(--chart-1)"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -92,8 +93,9 @@ export function GasCylinderChart({ cylinders }: GasCylinderChartProps) {
                   name === "price" ? "Price" : "Cost/Day",
                 ]}
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  color: "var(--card-foreground)",
+                  border: "1px solid var(--border)",
                   borderRadius: "8px",
                 }}
               />
@@ -101,7 +103,7 @@ export function GasCylinderChart({ cylinders }: GasCylinderChartProps) {
               <Bar
                 yAxisId="price"
                 dataKey="price"
-                fill="hsl(var(--chart-3))"
+                fill="var(--chart-3)"
                 radius={[4, 4, 0, 0]}
                 name="Price"
               />
@@ -109,9 +111,9 @@ export function GasCylinderChart({ cylinders }: GasCylinderChartProps) {
                 yAxisId="cpd"
                 type="monotone"
                 dataKey="costPerDay"
-                stroke="hsl(var(--chart-2))"
+                stroke="var(--chart-2)"
                 strokeWidth={2}
-                dot={{ fill: "hsl(var(--chart-2))", r: 4 }}
+                dot={{ fill: "var(--chart-2)", r: 4 }}
                 name="Cost/Day"
               />
             </ComposedChart>

@@ -1,5 +1,5 @@
 
-import { getIncomeEntries, getIncomeMonthlySummaries, deleteIncomeEntry, addIncomeEntry } from "./actions";
+import { getIncomeEntries, getIncomeMonthlySummaries, deleteIncomeEntry } from "./actions";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,

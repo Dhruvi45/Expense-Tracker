@@ -47,10 +47,12 @@ export function Sidebar() {
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card">
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <Receipt className="h-6 w-6 text-primary" />
-          <span className="text-lg font-semibold">Expense Tracker</span>
+      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card sticky top-0 h-screen">
+        <div className="flex h-16 items-center gap-2.5 border-b border-border px-5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
+            <Receipt className="h-5 w-5" />
+          </div>
+          <span className="text-lg font-semibold tracking-tight">Expense Tracker</span>
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
@@ -59,9 +61,9 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive(item.href)
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
             >
@@ -73,9 +75,17 @@ export function Sidebar() {
       </aside>
 
       {/* ── Mobile top header ── */}
-      <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center border-b border-border bg-background px-4 md:hidden">
-        <Receipt className="h-5 w-5 text-primary" />
-        <span className="ml-2 text-base font-semibold">Expense Tracker</span>
+      <header
+        className="fixed top-0 left-0 right-0 z-40 flex items-center border-b border-border/60 bg-background/85 backdrop-blur-lg px-4 md:hidden"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          height: "calc(3.5rem + env(safe-area-inset-top))",
+        }}
+      >
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
+          <Receipt className="h-4 w-4" />
+        </div>
+        <span className="ml-2 text-base font-semibold tracking-tight">Expense Tracker</span>
       </header>
 
       {/* ── More drawer backdrop ── */}
@@ -144,7 +154,7 @@ export function Sidebar() {
 
       {/* ── Mobile bottom navigation ── */}
       <nav
-        className="fixed left-0 right-0 z-40 md:hidden bg-background border-t border-border"
+        className="fixed left-0 right-0 z-40 md:hidden bg-background/85 backdrop-blur-lg border-t border-border/60"
         style={{
           bottom: 0,
           paddingBottom: "env(safe-area-inset-bottom)",

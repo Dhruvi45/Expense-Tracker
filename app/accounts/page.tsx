@@ -1,7 +1,6 @@
 
 import { getAccountsWithMonthlySpend } from "./actions";
 import { AccountCard } from "@/components/account-card";
-import { ManualAdjustDialog } from "@/components/manual-adjust-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Wallet } from "lucide-react";
 import { RunMonthStartButton } from "@/components/run-month-start-button";

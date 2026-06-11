@@ -31,12 +31,28 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#18181b",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c2027" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
+
+// Sync the .dark class with the system theme before first paint (avoids flash).
+const themeScript = `
+(function () {
+  var mq = window.matchMedia("(prefers-color-scheme: dark)");
+  function apply() {
+    document.documentElement.classList.toggle("dark", mq.matches);
+  }
+  apply();
+  mq.addEventListener("change", apply);
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -44,7 +60,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -52,7 +71,7 @@ export default function RootLayout({
         <div className="flex min-h-screen">
           <Sidebar />
           <main className="flex-1 overflow-auto">
-            <div className="mx-auto max-w-7xl px-4 pt-16 md:px-8 md:py-8" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
+            <div className="mx-auto max-w-7xl px-4 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:px-8 md:py-8">
               {children}
             </div>
           </main>

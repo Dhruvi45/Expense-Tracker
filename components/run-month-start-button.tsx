@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { runMonthStart } from "@/app/accounts/actions";
 import { RefreshCw, CheckCircle } from "lucide-react";
 
 export function RunMonthStartButton() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
@@ -13,23 +16,17 @@ export function RunMonthStartButton() {
     setLoading(true);
     setError("");
     setDone(false);
-    try {
-      const res = await fetch("/api/cron/month-start", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev"}` },
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Failed to run allocation");
-      } else {
-        setDone(true);
-        setTimeout(() => setDone(false), 3000);
-        window.location.reload();
-      }
-    } catch {
-      setError("Network error");
-    }
+
+    const result = await runMonthStart();
     setLoading(false);
+
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setDone(true);
+      setTimeout(() => setDone(false), 3000);
+      router.refresh();
+    }
   }
 
   return (

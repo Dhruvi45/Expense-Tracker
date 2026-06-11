@@ -69,7 +69,8 @@ export async function bulkAddExpenses(items: BulkExpenseItem[]) {
   }
 
   revalidatePath("/expenses");
-  revalidatePath("/");
+  revalidatePath("/history");
+  revalidatePath("/dashboard");
   revalidatePath("/reports");
 
   return { success: true, count: items.length };
